@@ -1,4 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from database import init_db, SessionLocal, Computer, Session, Tariff
 from pydantic import BaseModel
 import datetime
@@ -13,6 +14,13 @@ logging.basicConfig(
 )
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.on_event("startup")
 async def startup():
@@ -41,12 +49,10 @@ class StopSession(BaseModel):
 @app.post("/sessions/start")
 def start_session(data: StartSession):
     db = SessionLocal()
-
     computer = db.query(Computer).filter(Computer.id == data.computer_id).first()
     if not computer:
         db.close()
         raise HTTPException(status_code=404, detail="ПК не найден")
-
     active = db.query(Session).filter(
         Session.computer_id == data.computer_id,
         Session.ended_at == None
@@ -54,12 +60,10 @@ def start_session(data: StartSession):
     if active:
         db.close()
         raise HTTPException(status_code=400, detail="На этом ПК уже идёт сессия")
-
     tariff = db.query(Tariff).filter(Tariff.id == data.tariff_id).first()
     if not tariff:
         db.close()
         raise HTTPException(status_code=404, detail="Тариф не найден")
-
     session = Session(
         computer_id=data.computer_id,
         tariff_id=data.tariff_id,
@@ -67,7 +71,6 @@ def start_session(data: StartSession):
     )
     db.add(session)
     db.commit()
-
     result = {"session_id": session.id, "started_at": str(session.started_at)}
     db.close()
     logging.info(f"Сессия {session.id} начата на ПК {data.computer_id}")
@@ -76,7 +79,6 @@ def start_session(data: StartSession):
 @app.post("/sessions/stop")
 def stop_session(data: StopSession):
     db = SessionLocal()
-
     session = db.query(Session).filter(
         Session.id == data.session_id,
         Session.ended_at == None
@@ -84,16 +86,13 @@ def stop_session(data: StopSession):
     if not session:
         db.close()
         raise HTTPException(status_code=404, detail="Активная сессия не найдена")
-
     tariff = db.query(Tariff).filter(Tariff.id == session.tariff_id).first()
     now = datetime.datetime.utcnow()
     duration = (now - session.started_at).seconds / 3600
     total = round(duration * tariff.price_per_hour, 2)
-
     session.ended_at = now
     session.total_amount = total
     db.commit()
-
     result = {
         "session_id": session.id,
         "duration_minutes": round(duration * 60, 1),
@@ -130,7 +129,6 @@ async def agent_websocket(websocket: WebSocket):
             msg = json.loads(data)
             computer_id = msg.get("computer_id")
             event = msg.get("event")
-
             if event == "heartbeat" and computer_id:
                 db = SessionLocal()
                 computer = db.query(Computer).filter(Computer.id == computer_id).first()
@@ -139,9 +137,7 @@ async def agent_websocket(websocket: WebSocket):
                     computer.last_seen = datetime.datetime.utcnow()
                     db.commit()
                 db.close()
-
             await websocket.send_text(json.dumps({"status": "ok"}))
-
     except WebSocketDisconnect:
         if computer_id:
             db = SessionLocal()
