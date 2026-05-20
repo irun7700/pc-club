@@ -222,3 +222,32 @@ async def check_offline():
                 computer.status = "offline"
         db.commit()
         db.close()
+
+
+@app.get("/reports/today")
+def today_report():
+    db = SessionLocal()
+    today = datetime.datetime.utcnow().date()
+    sessions = db.query(Session).filter(
+        Session.ended_at != None,
+        Session.started_at >= datetime.datetime(today.year, today.month, today.day)
+    ).all()
+    total = sum(s.total_amount or 0 for s in sessions)
+    result = {
+        "total_amount": round(total, 2),
+        "sessions_count": len(sessions),
+        "sessions": [
+            {
+                "session_id": s.id,
+                "computer_id": s.computer_id,
+                "client_id": s.client_id,
+                "duration_minutes": round((s.ended_at - s.started_at).seconds / 60, 1),
+                "total_amount": s.total_amount,
+                "started_at": str(s.started_at),
+                "ended_at": str(s.ended_at)
+            }
+            for s in sessions
+        ]
+    }
+    db.close()
+    return result
