@@ -251,3 +251,38 @@ def today_report():
     }
     db.close()
     return result
+
+
+class CreateTariff(BaseModel):
+    name: str
+    price_per_hour: float
+
+@app.get("/tariffs")
+def get_tariffs():
+    db = SessionLocal()
+    tariffs = db.query(Tariff).all()
+    result = [{"id": t.id, "name": t.name, "price_per_hour": t.price_per_hour} for t in tariffs]
+    db.close()
+    return result
+
+@app.post("/tariffs")
+def create_tariff(data: CreateTariff):
+    db = SessionLocal()
+    tariff = Tariff(name=data.name, price_per_hour=data.price_per_hour)
+    db.add(tariff)
+    db.commit()
+    result = {"id": tariff.id, "name": tariff.name, "price_per_hour": tariff.price_per_hour}
+    db.close()
+    return result
+
+@app.delete("/tariffs/{tariff_id}")
+def delete_tariff(tariff_id: int):
+    db = SessionLocal()
+    tariff = db.query(Tariff).filter(Tariff.id == tariff_id).first()
+    if not tariff:
+        db.close()
+        raise HTTPException(status_code=404, detail="Тариф не найден")
+    db.delete(tariff)
+    db.commit()
+    db.close()
+    return {"ok": True}
