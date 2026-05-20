@@ -1,7 +1,8 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from database import init_db, SessionLocal, Computer, Session, Tariff
+from database import init_db, SessionLocal, Computer, Session, Tariff, Client, Transaction
 from pydantic import BaseModel
+from typing import Optional
 import datetime
 import asyncio
 import json
@@ -39,9 +40,60 @@ def get_computers():
     db.close()
     return result
 
+# --- Клиенты ---
+
+class CreateClient(BaseModel):
+    name: str
+    phone: Optional[str] = None
+
+class Deposit(BaseModel):
+    amount: float
+
+@app.get("/clients")
+def get_clients():
+    db = SessionLocal()
+    clients = db.query(Client).all()
+    result = [{"id": c.id, "name": c.name, "phone": c.phone, "balance": c.balance} for c in clients]
+    db.close()
+    return result
+
+@app.post("/clients")
+def create_client(data: CreateClient):
+    db = SessionLocal()
+    client = Client(name=data.name, phone=data.phone, balance=0.0)
+    db.add(client)
+    db.commit()
+    result = {"id": client.id, "name": client.name, "phone": client.phone, "balance": client.balance}
+    db.close()
+    logging.info(f"Клиент создан: {client.name}")
+    return result
+
+@app.post("/clients/{client_id}/deposit")
+def deposit(client_id: int, data: Deposit):
+    db = SessionLocal()
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        db.close()
+        raise HTTPException(status_code=404, detail="Клиент не найден")
+    client.balance += data.amount
+    transaction = Transaction(
+        client_id=client_id,
+        amount=data.amount,
+        type="deposit"
+    )
+    db.add(transaction)
+    db.commit()
+    result = {"id": client.id, "name": client.name, "balance": client.balance}
+    db.close()
+    logging.info(f"Пополнение баланса клиента {client_id}: {data.amount}")
+    return result
+
+# --- Сессии ---
+
 class StartSession(BaseModel):
     computer_id: int
     tariff_id: int
+    client_id: Optional[int] = None
 
 class StopSession(BaseModel):
     session_id: int
@@ -67,6 +119,7 @@ def start_session(data: StartSession):
     session = Session(
         computer_id=data.computer_id,
         tariff_id=data.tariff_id,
+        client_id=data.client_id,
         started_at=datetime.datetime.utcnow()
     )
     db.add(session)
@@ -92,6 +145,16 @@ def stop_session(data: StopSession):
     total = round(duration * tariff.price_per_hour, 2)
     session.ended_at = now
     session.total_amount = total
+    if session.client_id:
+        client = db.query(Client).filter(Client.id == session.client_id).first()
+        if client:
+            client.balance -= total
+            transaction = Transaction(
+                client_id=session.client_id,
+                amount=-total,
+                type="session"
+            )
+            db.add(transaction)
     db.commit()
     result = {
         "session_id": session.id,
@@ -113,6 +176,7 @@ def get_active_sessions():
             "session_id": s.id,
             "computer_id": s.computer_id,
             "tariff_id": s.tariff_id,
+            "client_id": s.client_id,
             "started_at": str(s.started_at),
             "duration_minutes": round(duration, 1)
         })
