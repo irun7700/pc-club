@@ -2,9 +2,51 @@ import { useState, useEffect } from 'react'
 
 const API = 'http://localhost:8000'
 
-function ComputerCard({ computer, onStart, onStop, activeSession }) {
+function StartModal({ computer, clients, onConfirm, onCancel }) {
+  const [clientId, setClientId] = useState('')
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-6 shadow-xl w-96">
+        <h2 className="text-xl font-bold mb-4">Старт сессии — {computer.name}</h2>
+        <div className="mb-4">
+          <label className="block text-sm text-gray-600 mb-2">Клиент (необязательно)</label>
+          <select
+            className="w-full border rounded-lg px-3 py-2"
+            value={clientId}
+            onChange={e => setClientId(e.target.value)}
+          >
+            <option value="">— Без клиента —</option>
+            {clients.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name} — {c.balance} ₸
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => onConfirm(clientId ? parseInt(clientId) : null)}
+            className="flex-1 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
+          >
+            Начать
+          </button>
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 font-medium"
+          >
+            Отмена
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ComputerCard({ computer, onStart, onStop, activeSession, clients }) {
   const isOnline = computer.status === 'online'
   const hasSession = activeSession !== null
+  const client = activeSession?.client_id ? clients.find(c => c.id === activeSession.client_id) : null
 
   return (
     <div className={`rounded-xl p-5 shadow-md border-2 ${isOnline ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
@@ -15,15 +57,16 @@ function ComputerCard({ computer, onStart, onStop, activeSession }) {
         </span>
       </div>
       {hasSession && (
-        <div className="text-sm text-blue-700 mb-3">
-          ⏱ Сессия: {activeSession.duration_minutes} мин
-          {activeSession.client_id && <span className="ml-2">👤 Клиент #{activeSession.client_id}</span>}
+        <div className="text-sm text-blue-700 mb-3 space-y-1">
+          <div>⏱ Сессия: {activeSession.duration_minutes} мин</div>
+          {client && <div>👤 {client.name} — {client.balance} ₸</div>}
+          {!client && <div>👤 Без клиента</div>}
         </div>
       )}
       <div className="flex gap-2 mt-2">
         {!hasSession ? (
           <button
-            onClick={() => onStart(computer.id)}
+            onClick={() => onStart(computer)}
             disabled={!isOnline}
             className="flex-1 py-2 rounded-lg bg-blue-500 text-white font-medium disabled:opacity-40 hover:bg-blue-600"
           >
@@ -160,16 +203,20 @@ export default function App() {
   const [tab, setTab] = useState('computers')
   const [computers, setComputers] = useState([])
   const [sessions, setSessions] = useState([])
+  const [clients, setClients] = useState([])
   const [lastUpdate, setLastUpdate] = useState('')
+  const [startModal, setStartModal] = useState(null)
 
   const fetchData = async () => {
     try {
-      const [compRes, sessRes] = await Promise.all([
+      const [compRes, sessRes, clientRes] = await Promise.all([
         fetch(`${API}/computers`),
-        fetch(`${API}/sessions/active`)
+        fetch(`${API}/sessions/active`),
+        fetch(`${API}/clients`)
       ])
       setComputers(await compRes.json())
       setSessions(await sessRes.json())
+      setClients(await clientRes.json())
       setLastUpdate(new Date().toLocaleTimeString())
     } catch (e) {
       console.error('Ошибка загрузки:', e)
@@ -182,12 +229,17 @@ export default function App() {
     return () => clearInterval(interval)
   }, [])
 
-  const handleStart = async (computerId) => {
+  const handleStart = (computer) => {
+    setStartModal(computer)
+  }
+
+  const handleConfirmStart = async (clientId) => {
     await fetch(`${API}/sessions/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ computer_id: computerId, tariff_id: 1 })
+      body: JSON.stringify({ computer_id: startModal.id, tariff_id: 1, client_id: clientId })
     })
+    setStartModal(null)
     fetchData()
   }
 
@@ -204,6 +256,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
+      {startModal && (
+        <StartModal
+          computer={startModal}
+          clients={clients}
+          onConfirm={handleConfirmStart}
+          onCancel={() => setStartModal(null)}
+        />
+      )}
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">🖥 PC Club Admin</h1>
@@ -237,6 +297,7 @@ export default function App() {
                   onStart={handleStart}
                   onStop={handleStop}
                   activeSession={sessions.find(s => s.computer_id === computer.id) || null}
+                  clients={clients}
                 />
               ))}
             </div>
