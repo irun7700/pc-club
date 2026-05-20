@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+*.env
+club.db
+backend.log
+agent.log
+
+# Node
+node_modules/
+dist/
+
+# Mac
+.DS_Store
