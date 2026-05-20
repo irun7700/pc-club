@@ -66,6 +66,9 @@ function TariffsTab() {
   const [tariffs, setTariffs] = useState([])
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
+  const [editId, setEditId] = useState(null)
+  const [editName, setEditName] = useState('')
+  const [editPrice, setEditPrice] = useState('')
 
   const fetchTariffs = async () => { const res = await fetch(`${API}/tariffs`); setTariffs(await res.json()) }
   useEffect(() => { fetchTariffs() }, [])
@@ -80,6 +83,13 @@ function TariffsTab() {
     if (!confirm('Удалить тариф?')) return
     await fetch(`${API}/tariffs/${id}`, { method: 'DELETE' })
     fetchTariffs()
+  }
+
+  const handleEdit = (t) => { setEditId(t.id); setEditName(t.name); setEditPrice(t.price_per_hour) }
+
+  const handleSave = async (id) => {
+    await fetch(`${API}/tariffs/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: editName, price_per_hour: parseFloat(editPrice) }) })
+    setEditId(null); fetchTariffs()
   }
 
   return (
@@ -104,11 +114,25 @@ function TariffsTab() {
             <tbody>
               {tariffs.map(t => (
                 <tr key={t.id} className="border-t hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{t.name}</td>
-                  <td className="px-4 py-3">{t.price_per_hour} ₸</td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700">Удалить</button>
-                  </td>
+                  {editId === t.id ? (
+                    <td colSpan="3" className="px-4 py-2">
+                      <div className="flex gap-2 items-center">
+                        <input className="flex-1 border rounded px-2 py-1" value={editName} onChange={e => setEditName(e.target.value)} />
+                        <input className="w-24 border rounded px-2 py-1" type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} />
+                        <button onClick={() => handleSave(t.id)} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">Сохранить</button>
+                        <button onClick={() => setEditId(null)} className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Отмена</button>
+                      </div>
+                    </td>
+                  ) : (
+                    <>
+                      <td className="px-4 py-3 font-medium">{t.name}</td>
+                      <td className="px-4 py-3">{t.price_per_hour} ₸</td>
+                      <td className="px-4 py-3 text-right">
+                        <button onClick={() => handleEdit(t)} className="text-blue-500 hover:text-blue-700 mr-3">Изменить</button>
+                        <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700">Удалить</button>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>

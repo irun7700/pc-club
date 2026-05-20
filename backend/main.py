@@ -286,3 +286,22 @@ def delete_tariff(tariff_id: int):
     db.commit()
     db.close()
     return {"ok": True}
+
+
+class UpdateTariff(BaseModel):
+    name: str
+    price_per_hour: float
+
+@app.put("/tariffs/{tariff_id}")
+def update_tariff(tariff_id: int, data: UpdateTariff):
+    db = SessionLocal()
+    tariff = db.query(Tariff).filter(Tariff.id == tariff_id).first()
+    if not tariff:
+        db.close()
+        raise HTTPException(status_code=404, detail="Тариф не найден")
+    tariff.name = data.name
+    tariff.price_per_hour = data.price_per_hour
+    db.commit()
+    result = {"id": tariff.id, "name": tariff.name, "price_per_hour": tariff.price_per_hour}
+    db.close()
+    return result
