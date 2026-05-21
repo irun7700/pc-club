@@ -390,3 +390,21 @@ def delete_user(user_id: int, user=Depends(require_role("owner"))):
     db.commit()
     db.close()
     return {"ok": True}
+
+
+@app.post("/init")
+def init_owner():
+    db = SessionLocal()
+    existing = db.query(User).filter(User.username == "owner").first()
+    if existing:
+        db.close()
+        return {"message": "Владелец уже существует"}
+    owner = User(
+        username="owner",
+        password_hash=hash_password("owner123"),
+        role="owner"
+    )
+    db.add(owner)
+    db.commit()
+    db.close()
+    return {"message": "Владелец создан!", "username": "owner", "password": "owner123"}
