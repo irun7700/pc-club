@@ -1,3 +1,34 @@
+function AddComputerForm({ headers, onAdded }) {
+  const [name, setName] = useState('')
+  const [number, setNumber] = useState('')
+  const [show, setShow] = useState(false)
+
+  const handleAdd = async () => {
+    if (!name || !number) return
+    await fetch(`${API}/computers`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name, number: parseInt(number) })
+    })
+    setName(''); setNumber(''); setShow(false); onAdded()
+  }
+
+  return (
+    <div className="mb-4">
+      {show ? (
+        <div className="bg-white rounded-xl p-4 shadow-md flex gap-3 items-center">
+          <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Название (напр. ПК-1)" value={name} onChange={e => setName(e.target.value)} />
+          <input className="w-24 border rounded-lg px-3 py-2" placeholder="Номер" type="number" value={number} onChange={e => setNumber(e.target.value)} />
+          <button onClick={handleAdd} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Добавить</button>
+          <button onClick={() => setShow(false)} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Отмена</button>
+        </div>
+      ) : (
+        <button onClick={() => setShow(true)} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">+ Добавить ПК</button>
+      )}
+    </div>
+  )
+}
+
 import { useState, useEffect } from 'react'
 
 const API = 'https://pc-club-production.up.railway.app'
@@ -90,7 +121,7 @@ function StartModal({ computer, clients, tariffs, onConfirm, onCancel }) {
   )
 }
 
-function ComputerCard({ computer, onStart, onStop, activeSession, clients, tariffs }) {
+function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clients, tariffs, userRole }) {
   const isOnline = computer.status === 'online'
   const hasSession = activeSession !== null
   const client = activeSession?.client_id ? clients.find(c => c.id === activeSession.client_id) : null
@@ -108,6 +139,9 @@ function ComputerCard({ computer, onStart, onStop, activeSession, clients, tarif
           <div>⏱ {activeSession.duration_minutes} мин · {tariff ? tariff.name : ''}</div>
           {client ? <div>👤 {client.name} — {client.balance} ₸</div> : <div>👤 Без клиента</div>}
         </div>
+      )}
+      {userRole === 'owner' && !activeSession && (
+        <button onClick={() => onDelete(computer.id)} className="text-xs text-red-400 hover:text-red-600 mt-1">Удалить ПК</button>
       )}
       <div className="flex gap-2 mt-2">
         {!hasSession ? (
@@ -375,6 +409,12 @@ export default function App() {
 
   const handleLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null) }
   const handleLogin = (data) => setUser({ username: data.username, role: data.role })
+  const handleDeleteComputer = async (computerId) => {
+    if (!confirm('Удалить ПК?')) return
+    await fetch(`${API}/computers/${computerId}`, { method: 'DELETE', headers })
+    fetchData()
+  }
+
   const handleStart = (computer) => setStartModal(computer)
   const handleConfirmStart = async (clientId, tariffId) => {
     await fetch(`${API}/sessions/start`, { method: 'POST', headers, body: JSON.stringify({ computer_id: startModal.id, tariff_id: tariffId, client_id: clientId }) })
@@ -410,7 +450,14 @@ export default function App() {
           {(user.role === 'owner' || user.role === 'manager') && <button onClick={() => setTab('tariffs')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'tariffs' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>⚙️ Тарифы</button>}
           {user.role === 'owner' && <button onClick={() => setTab('staff')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'staff' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>👥 Сотрудники</button>}
         </div>
-        {tab === 'computers' && (computers.length === 0 ? <p className="text-gray-500 text-center mt-20">Нет компьютеров...</p> : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{computers.map(computer => <ComputerCard key={computer.id} computer={computer} onStart={handleStart} onStop={handleStop} activeSession={sessions.find(s => s.computer_id === computer.id) || null} clients={clients} tariffs={tariffs} />)}</div>)}
+        {tab === 'computers' && (
+          <div>
+            {(user.role === 'owner' || user.role === 'manager') && (
+              <AddComputerForm headers={headers} onAdded={fetchData} />
+            )}
+            {computers.length === 0 ? <p className="text-gray-500 text-center mt-20">Нет компьютеров...</p> : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{computers.map(computer => <ComputerCard key={computer.id} computer={computer} onStart={handleStart} onStop={handleStop} onDelete={handleDeleteComputer} activeSession={sessions.find(s => s.computer_id === computer.id) || null} clients={clients} tariffs={tariffs} userRole={user.role} />)}</div>}
+          </div>
+        )}
         {tab === 'clients' && <ClientsTab />}
         {tab === 'cash' && <CashTab clients={clients} />}
         {tab === 'tariffs' && <TariffsTab />}
