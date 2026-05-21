@@ -423,3 +423,30 @@ def init_computers():
     db.commit()
     db.close()
     return {"message": "Добавлено 35 ПК!"}
+
+
+class CreateComputer(BaseModel):
+    name: str
+    number: int
+
+@app.post("/computers")
+def create_computer(data: CreateComputer, user=Depends(require_role("owner", "manager"))):
+    db = SessionLocal()
+    computer = Computer(name=data.name, number=data.number, status="offline")
+    db.add(computer)
+    db.commit()
+    result = {"id": computer.id, "name": computer.name, "number": computer.number}
+    db.close()
+    return result
+
+@app.delete("/computers/{computer_id}")
+def delete_computer(computer_id: int, user=Depends(require_role("owner"))):
+    db = SessionLocal()
+    computer = db.query(Computer).filter(Computer.id == computer_id).first()
+    if not computer:
+        db.close()
+        raise HTTPException(status_code=404, detail="ПК не найден")
+    db.delete(computer)
+    db.commit()
+    db.close()
+    return {"ok": True}
