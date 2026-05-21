@@ -408,3 +408,18 @@ def init_owner():
     db.commit()
     db.close()
     return {"message": "Владелец создан!", "username": "owner", "password": "owner123"}
+
+
+@app.post("/init/computers")
+def init_computers():
+    db = SessionLocal()
+    count = db.query(Computer).count()
+    if count > 0:
+        db.close()
+        return {"message": f"Уже есть {count} ПК"}
+    for i in range(1, 36):
+        computer = Computer(name=f"ПК-{i}", number=i, status="offline")
+        db.add(computer)
+    db.commit()
+    db.close()
+    return {"message": "Добавлено 35 ПК!"}
