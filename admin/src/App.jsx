@@ -2,10 +2,68 @@ import { useState, useEffect } from 'react'
 
 const API = 'http://localhost:8000'
 
+function getToken() { return localStorage.getItem('token') }
+function getUser() { try { return JSON.parse(localStorage.getItem('user')) } catch { return null } }
+
+function LoginPage({ onLogin }) {
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+
+  const handleLogin = async () => {
+    setError('')
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      if (!res.ok) { setError('Неверный логин или пароль'); return }
+      const data = await res.json()
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify({ username: data.username, role: data.role }))
+      onLogin(data)
+    } catch (e) {
+      setError('Ошибка подключения к серверу')
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="bg-white rounded-xl p-8 shadow-xl w-96">
+        <h1 className="text-2xl font-bold text-center mb-6">🖥 PC Club</h1>
+        <div className="space-y-4">
+          <input
+            className="w-full border rounded-lg px-4 py-3"
+            placeholder="Логин"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleLogin()}
+          />
+          <input
+            className="w-full border rounded-lg px-4 py-3"
+            placeholder="Пароль"
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleLogin()}
+          />
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <button
+            onClick={handleLogin}
+            className="w-full py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
+          >
+            Войти
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function StartModal({ computer, clients, tariffs, onConfirm, onCancel }) {
   const [clientId, setClientId] = useState('')
   const [tariffId, setTariffId] = useState(tariffs[0]?.id || '')
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 shadow-xl w-96">
@@ -69,48 +127,39 @@ function TariffsTab() {
   const [editId, setEditId] = useState(null)
   const [editName, setEditName] = useState('')
   const [editPrice, setEditPrice] = useState('')
-
-  const fetchTariffs = async () => { const res = await fetch(`${API}/tariffs`); setTariffs(await res.json()) }
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
+  const fetchTariffs = async () => { const res = await fetch(`${API}/tariffs`, { headers }); setTariffs(await res.json()) }
   useEffect(() => { fetchTariffs() }, [])
-
   const handleCreate = async () => {
     if (!name || !price) return
-    await fetch(`${API}/tariffs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, price_per_hour: parseFloat(price) }) })
+    await fetch(`${API}/tariffs`, { method: 'POST', headers, body: JSON.stringify({ name, price_per_hour: parseFloat(price) }) })
     setName(''); setPrice(''); fetchTariffs()
   }
-
   const handleDelete = async (id) => {
     if (!confirm('Удалить тариф?')) return
-    await fetch(`${API}/tariffs/${id}`, { method: 'DELETE' })
+    await fetch(`${API}/tariffs/${id}`, { method: 'DELETE', headers })
     fetchTariffs()
   }
-
   const handleEdit = (t) => { setEditId(t.id); setEditName(t.name); setEditPrice(t.price_per_hour) }
-
   const handleSave = async (id) => {
-    await fetch(`${API}/tariffs/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: editName, price_per_hour: parseFloat(editPrice) }) })
+    await fetch(`${API}/tariffs/${id}`, { method: 'PUT', headers, body: JSON.stringify({ name: editName, price_per_hour: parseFloat(editPrice) }) })
     setEditId(null); fetchTariffs()
   }
-
   return (
     <div>
       <div className="bg-white rounded-xl p-5 shadow-md mb-6">
         <h2 className="text-lg font-bold mb-4">➕ Новый тариф</h2>
         <div className="flex gap-3">
-          <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Название (напр. Стандарт)" value={name} onChange={e => setName(e.target.value)} />
+          <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Название" value={name} onChange={e => setName(e.target.value)} />
           <input className="w-40 border rounded-lg px-3 py-2" placeholder="₸ за час" type="number" value={price} onChange={e => setPrice(e.target.value)} />
           <button onClick={handleCreate} className="px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Создать</button>
         </div>
       </div>
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
         <div className="p-4 border-b font-bold text-gray-700">Список тарифов</div>
-        {tariffs.length === 0 ? (
-          <p className="text-gray-500 text-center p-6">Нет тарифов</p>
-        ) : (
+        {tariffs.length === 0 ? <p className="text-gray-500 text-center p-6">Нет тарифов</p> : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500">
-              <tr><th className="text-left px-4 py-2">Название</th><th className="text-left px-4 py-2">Цена за час</th><th className="px-4 py-2"></th></tr>
-            </thead>
+            <thead className="bg-gray-50 text-gray-500"><tr><th className="text-left px-4 py-2">Название</th><th className="text-left px-4 py-2">Цена за час</th><th className="px-4 py-2"></th></tr></thead>
             <tbody>
               {tariffs.map(t => (
                 <tr key={t.id} className="border-t hover:bg-gray-50">
@@ -149,16 +198,17 @@ function ClientsTab() {
   const [phone, setPhone] = useState('')
   const [depositAmount, setDepositAmount] = useState('')
   const [selectedClient, setSelectedClient] = useState(null)
-  const fetchClients = async () => { const res = await fetch(`${API}/clients`); setClients(await res.json()) }
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
+  const fetchClients = async () => { const res = await fetch(`${API}/clients`, { headers }); setClients(await res.json()) }
   useEffect(() => { fetchClients() }, [])
   const handleCreate = async () => {
     if (!name) return
-    await fetch(`${API}/clients`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone }) })
+    await fetch(`${API}/clients`, { method: 'POST', headers, body: JSON.stringify({ name, phone }) })
     setName(''); setPhone(''); fetchClients()
   }
   const handleDeposit = async (clientId) => {
     if (!depositAmount) return
-    await fetch(`${API}/clients/${clientId}/deposit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: parseFloat(depositAmount) }) })
+    await fetch(`${API}/clients/${clientId}/deposit`, { method: 'POST', headers, body: JSON.stringify({ amount: parseFloat(depositAmount) }) })
     setDepositAmount(''); setSelectedClient(null); fetchClients()
   }
   return (
@@ -196,7 +246,8 @@ function ClientsTab() {
 
 function CashTab({ clients }) {
   const [report, setReport] = useState(null)
-  const fetchReport = async () => { const res = await fetch(`${API}/reports/today`); setReport(await res.json()) }
+  const headers = { 'Authorization': `Bearer ${getToken()}` }
+  const fetchReport = async () => { const res = await fetch(`${API}/reports/today`, { headers }); setReport(await res.json()) }
   useEffect(() => { fetchReport(); const i = setInterval(fetchReport, 10000); return () => clearInterval(i) }, [])
   if (!report) return <p className="text-gray-500">Загрузка...</p>
   return (
@@ -215,9 +266,7 @@ function CashTab({ clients }) {
         <div className="p-4 border-b font-bold text-gray-700">История сессий</div>
         {report.sessions.length === 0 ? <p className="text-gray-500 text-center p-6">Сессий пока нет</p> : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500">
-              <tr><th className="text-left px-4 py-2">ПК</th><th className="text-left px-4 py-2">Клиент</th><th className="text-left px-4 py-2">Время</th><th className="text-right px-4 py-2">Сумма</th></tr>
-            </thead>
+            <thead className="bg-gray-50 text-gray-500"><tr><th className="text-left px-4 py-2">ПК</th><th className="text-left px-4 py-2">Клиент</th><th className="text-left px-4 py-2">Время</th><th className="text-right px-4 py-2">Сумма</th></tr></thead>
             <tbody>
               {report.sessions.slice().reverse().map(s => {
                 const client = s.client_id ? clients.find(c => c.id === s.client_id) : null
@@ -238,7 +287,62 @@ function CashTab({ clients }) {
   )
 }
 
+function StaffTab() {
+  const [users, setUsers] = useState([])
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState('admin')
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
+  const fetchUsers = async () => { const res = await fetch(`${API}/users`, { headers }); setUsers(await res.json()) }
+  useEffect(() => { fetchUsers() }, [])
+  const handleCreate = async () => {
+    if (!username || !password) return
+    await fetch(`${API}/users`, { method: 'POST', headers, body: JSON.stringify({ username, password, role }) })
+    setUsername(''); setPassword(''); fetchUsers()
+  }
+  const handleDelete = async (id) => {
+    if (!confirm('Удалить сотрудника?')) return
+    await fetch(`${API}/users/${id}`, { method: 'DELETE', headers })
+    fetchUsers()
+  }
+  const roleLabel = { owner: '👑 Владелец', manager: '🔑 Управляющий', admin: '👤 Администратор' }
+  return (
+    <div>
+      <div className="bg-white rounded-xl p-5 shadow-md mb-6">
+        <h2 className="text-lg font-bold mb-4">➕ Новый сотрудник</h2>
+        <div className="flex gap-3">
+          <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Логин" value={username} onChange={e => setUsername(e.target.value)} />
+          <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Пароль" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+          <select className="border rounded-lg px-3 py-2" value={role} onChange={e => setRole(e.target.value)}>
+            <option value="admin">Администратор</option>
+            <option value="manager">Управляющий</option>
+          </select>
+          <button onClick={handleCreate} className="px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Создать</button>
+        </div>
+      </div>
+      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+        <div className="p-4 border-b font-bold text-gray-700">Сотрудники</div>
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-gray-500"><tr><th className="text-left px-4 py-2">Логин</th><th className="text-left px-4 py-2">Роль</th><th className="px-4 py-2"></th></tr></thead>
+          <tbody>
+            {users.map(u => (
+              <tr key={u.id} className="border-t hover:bg-gray-50">
+                <td className="px-4 py-3 font-medium">{u.username}</td>
+                <td className="px-4 py-3">{roleLabel[u.role] || u.role}</td>
+                <td className="px-4 py-3 text-right">
+                  {u.role !== 'owner' && <button onClick={() => handleDelete(u.id)} className="text-red-500 hover:text-red-700">Удалить</button>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
+  const [user, setUser] = useState(getUser())
   const [tab, setTab] = useState('computers')
   const [computers, setComputers] = useState([])
   const [sessions, setSessions] = useState([])
@@ -247,30 +351,45 @@ export default function App() {
   const [lastUpdate, setLastUpdate] = useState('')
   const [startModal, setStartModal] = useState(null)
 
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
+
   const fetchData = async () => {
     try {
       const [compRes, sessRes, clientRes, tariffRes] = await Promise.all([
-        fetch(`${API}/computers`), fetch(`${API}/sessions/active`), fetch(`${API}/clients`), fetch(`${API}/tariffs`)
+        fetch(`${API}/computers`, { headers }), fetch(`${API}/sessions/active`, { headers }),
+        fetch(`${API}/clients`, { headers }), fetch(`${API}/tariffs`, { headers })
       ])
+      if (compRes.status === 401) { handleLogout(); return }
       setComputers(await compRes.json()); setSessions(await sessRes.json())
       setClients(await clientRes.json()); setTariffs(await tariffRes.json())
       setLastUpdate(new Date().toLocaleTimeString())
     } catch (e) { console.error('Ошибка загрузки:', e) }
   }
 
-  useEffect(() => { fetchData(); const i = setInterval(fetchData, 3000); return () => clearInterval(i) }, [])
+  useEffect(() => {
+    if (!user) return
+    fetchData()
+    const i = setInterval(fetchData, 3000)
+    return () => clearInterval(i)
+  }, [user])
 
+  const handleLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null) }
+  const handleLogin = (data) => setUser({ username: data.username, role: data.role })
   const handleStart = (computer) => setStartModal(computer)
   const handleConfirmStart = async (clientId, tariffId) => {
-    await fetch(`${API}/sessions/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ computer_id: startModal.id, tariff_id: tariffId, client_id: clientId }) })
+    await fetch(`${API}/sessions/start`, { method: 'POST', headers, body: JSON.stringify({ computer_id: startModal.id, tariff_id: tariffId, client_id: clientId }) })
     setStartModal(null); fetchData()
   }
   const handleStop = async (sessionId) => {
-    const res = await fetch(`${API}/sessions/stop`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId }) })
+    const res = await fetch(`${API}/sessions/stop`, { method: 'POST', headers, body: JSON.stringify({ session_id: sessionId }) })
     const data = await res.json()
     alert(`Сессия завершена!\nВремя: ${data.duration_minutes} мин\nСумма: ${data.total_amount} ₸`)
     fetchData()
   }
+
+  if (!user) return <LoginPage onLogin={handleLogin} />
+
+  const roleLabel = { owner: '👑 Владелец', manager: '🔑 Управляющий', admin: '👤 Администратор' }
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
@@ -278,18 +397,24 @@ export default function App() {
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">🖥 PC Club Admin</h1>
-          <span className="text-sm text-gray-500">Обновлено: {lastUpdate}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500">{roleLabel[user.role]} {user.username}</span>
+            <button onClick={handleLogout} className="px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm">Выйти</button>
+            <span className="text-xs text-gray-400">Обновлено: {lastUpdate}</span>
+          </div>
         </div>
         <div className="flex gap-2 mb-6 flex-wrap">
           <button onClick={() => setTab('computers')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'computers' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>🖥 Компьютеры</button>
           <button onClick={() => setTab('clients')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'clients' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>👤 Клиенты</button>
           <button onClick={() => setTab('cash')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'cash' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>💰 Касса</button>
-          <button onClick={() => setTab('tariffs')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'tariffs' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>⚙️ Тарифы</button>
+          {(user.role === 'owner' || user.role === 'manager') && <button onClick={() => setTab('tariffs')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'tariffs' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>⚙️ Тарифы</button>}
+          {user.role === 'owner' && <button onClick={() => setTab('staff')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'staff' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>👥 Сотрудники</button>}
         </div>
         {tab === 'computers' && (computers.length === 0 ? <p className="text-gray-500 text-center mt-20">Нет компьютеров...</p> : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{computers.map(computer => <ComputerCard key={computer.id} computer={computer} onStart={handleStart} onStop={handleStop} activeSession={sessions.find(s => s.computer_id === computer.id) || null} clients={clients} tariffs={tariffs} />)}</div>)}
         {tab === 'clients' && <ClientsTab />}
         {tab === 'cash' && <CashTab clients={clients} />}
         {tab === 'tariffs' && <TariffsTab />}
+        {tab === 'staff' && <StaffTab />}
       </div>
     </div>
   )

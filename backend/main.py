@@ -305,3 +305,88 @@ def update_tariff(tariff_id: int, data: UpdateTariff):
     result = {"id": tariff.id, "name": tariff.name, "price_per_hour": tariff.price_per_hour}
     db.close()
     return result
+
+
+# --- Авторизация ---
+from auth import hash_password, verify_password, create_token, decode_token
+from database import User
+from fastapi import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+security = HTTPBearer()
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = decode_token(credentials.credentials)
+        return payload
+    except:
+        raise HTTPException(status_code=401, detail="Неверный токен")
+
+def require_role(*roles):
+    def checker(user=Depends(get_current_user)):
+        if user.get("role") not in roles:
+            raise HTTPException(status_code=403, detail="Нет доступа")
+        return user
+    return checker
+
+class LoginData(BaseModel):
+    username: str
+    password: str
+
+class CreateUser(BaseModel):
+    username: str
+    password: str
+    role: str
+
+@app.post("/auth/login")
+def login(data: LoginData):
+    db = SessionLocal()
+    user = db.query(User).filter(User.username == data.username).first()
+    db.close()
+    if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Неверный логин или пароль")
+    token = create_token({"id": user.id, "username": user.username, "role": user.role})
+    return {"token": token, "role": user.role, "username": user.username}
+
+@app.get("/auth/me")
+def me(user=Depends(get_current_user)):
+    return user
+
+@app.get("/users")
+def get_users(user=Depends(require_role("owner"))):
+    db = SessionLocal()
+    users = db.query(User).all()
+    result = [{"id": u.id, "username": u.username, "role": u.role} for u in users]
+    db.close()
+    return result
+
+@app.post("/users")
+def create_user(data: CreateUser, user=Depends(require_role("owner"))):
+    db = SessionLocal()
+    existing = db.query(User).filter(User.username == data.username).first()
+    if existing:
+        db.close()
+        raise HTTPException(status_code=400, detail="Пользователь уже существует")
+    new_user = User(
+        username=data.username,
+        password_hash=hash_password(data.password),
+        role=data.role,
+        created_by=user["id"]
+    )
+    db.add(new_user)
+    db.commit()
+    result = {"id": new_user.id, "username": new_user.username, "role": new_user.role}
+    db.close()
+    return result
+
+@app.delete("/users/{user_id}")
+def delete_user(user_id: int, user=Depends(require_role("owner"))):
+    db = SessionLocal()
+    u = db.query(User).filter(User.id == user_id).first()
+    if not u:
+        db.close()
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    db.delete(u)
+    db.commit()
+    db.close()
+    return {"ok": True}
