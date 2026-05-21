@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const API = 'http://localhost:8000'
+const API = 'https://pc-club-production.up.railway.app'
 
 function getToken() { return localStorage.getItem('token') }
 function getUser() { try { return JSON.parse(localStorage.getItem('user')) } catch { return null } }
