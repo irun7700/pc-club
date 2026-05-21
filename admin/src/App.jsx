@@ -1,24 +1,22 @@
-function AddComputerForm({ headers, onAdded }) {
+function AddComputerForm({ headers, onAdded, computersCount }) {
   const [name, setName] = useState('')
-  const [number, setNumber] = useState('')
   const [show, setShow] = useState(false)
 
   const handleAdd = async () => {
-    if (!name || !number) return
+    if (!name) return
     await fetch(`${API}/computers`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ name, number: parseInt(number) })
+      body: JSON.stringify({ name, number: computersCount + 1 })
     })
-    setName(''); setNumber(''); setShow(false); onAdded()
+    setName(''); setShow(false); onAdded()
   }
 
   return (
     <div className="mb-4">
       {show ? (
         <div className="bg-white rounded-xl p-4 shadow-md flex gap-3 items-center">
-          <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Название (напр. ПК-1)" value={name} onChange={e => setName(e.target.value)} />
-          <input className="w-24 border rounded-lg px-3 py-2" placeholder="Номер" type="number" value={number} onChange={e => setNumber(e.target.value)} />
+          <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Название (напр. ПК-1 или VIP-1)" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
           <button onClick={handleAdd} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Добавить</button>
           <button onClick={() => setShow(false)} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Отмена</button>
         </div>
@@ -453,7 +451,7 @@ export default function App() {
         {tab === 'computers' && (
           <div>
             {(user.role === 'owner' || user.role === 'manager') && (
-              <AddComputerForm headers={headers} onAdded={fetchData} />
+              <AddComputerForm headers={headers} onAdded={fetchData} computersCount={computers.length} />
             )}
             {computers.length === 0 ? <p className="text-gray-500 text-center mt-20">Нет компьютеров...</p> : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{computers.map(computer => <ComputerCard key={computer.id} computer={computer} onStart={handleStart} onStop={handleStop} onDelete={handleDeleteComputer} activeSession={sessions.find(s => s.computer_id === computer.id) || null} clients={clients} tariffs={tariffs} userRole={user.role} />)}</div>}
           </div>
