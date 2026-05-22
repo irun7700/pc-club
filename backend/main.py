@@ -264,26 +264,41 @@ def today_report():
     return result
 
 
+def tariff_to_dict(t):
+    return {
+        "id": t.id, "name": t.name, "type": t.type or "hourly",
+        "price_per_hour": t.price_per_hour, "total_price": t.total_price,
+        "duration_minutes": t.duration_minutes, "start_time": t.start_time, "end_time": t.end_time
+    }
+
 class CreateTariff(BaseModel):
     name: str
-    price_per_hour: float
+    type: str = "hourly"
+    price_per_hour: float = None
+    total_price: float = None
     duration_minutes: int = None
+    start_time: str = None
+    end_time: str = None
 
 @app.get("/tariffs")
 def get_tariffs():
     db = SessionLocal()
     tariffs = db.query(Tariff).all()
-    result = [{"id": t.id, "name": t.name, "price_per_hour": t.price_per_hour, "duration_minutes": t.duration_minutes} for t in tariffs]
+    result = [tariff_to_dict(t) for t in tariffs]
     db.close()
     return result
 
 @app.post("/tariffs")
 def create_tariff(data: CreateTariff):
     db = SessionLocal()
-    tariff = Tariff(name=data.name, price_per_hour=data.price_per_hour, duration_minutes=data.duration_minutes)
+    tariff = Tariff(
+        name=data.name, type=data.type,
+        price_per_hour=data.price_per_hour, total_price=data.total_price,
+        duration_minutes=data.duration_minutes, start_time=data.start_time, end_time=data.end_time
+    )
     db.add(tariff)
     db.commit()
-    result = {"id": tariff.id, "name": tariff.name, "price_per_hour": tariff.price_per_hour, "duration_minutes": tariff.duration_minutes}
+    result = tariff_to_dict(tariff)
     db.close()
     return result
 
@@ -299,10 +314,14 @@ def delete_tariff(tariff_id: int):
     db.close()
     return {"ok": True}
 
-
 class UpdateTariff(BaseModel):
     name: str
-    price_per_hour: float
+    type: str = "hourly"
+    price_per_hour: float = None
+    total_price: float = None
+    duration_minutes: int = None
+    start_time: str = None
+    end_time: str = None
 
 @app.put("/tariffs/{tariff_id}")
 def update_tariff(tariff_id: int, data: UpdateTariff):
@@ -311,10 +330,11 @@ def update_tariff(tariff_id: int, data: UpdateTariff):
     if not tariff:
         db.close()
         raise HTTPException(status_code=404, detail="Тариф не найден")
-    tariff.name = data.name
-    tariff.price_per_hour = data.price_per_hour
+    tariff.name = data.name; tariff.type = data.type
+    tariff.price_per_hour = data.price_per_hour; tariff.total_price = data.total_price
+    tariff.duration_minutes = data.duration_minutes; tariff.start_time = data.start_time; tariff.end_time = data.end_time
     db.commit()
-    result = {"id": tariff.id, "name": tariff.name, "price_per_hour": tariff.price_per_hour}
+    result = tariff_to_dict(tariff)
     db.close()
     return result
 

@@ -200,39 +200,85 @@ function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clie
 
 function TariffsTab() {
   const [tariffs, setTariffs] = useState([])
+  const [type, setType] = useState('hourly')
   const [name, setName] = useState('')
-  const [price, setPrice] = useState('')
+  const [pricePerHour, setPricePerHour] = useState('')
+  const [totalPrice, setTotalPrice] = useState('')
   const [duration, setDuration] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
   const [editId, setEditId] = useState(null)
-  const [editName, setEditName] = useState('')
-  const [editPrice, setEditPrice] = useState('')
-  const [editDuration, setEditDuration] = useState('')
+  const [edit, setEdit] = useState({})
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
   const fetchTariffs = async () => { const res = await fetch(`${API}/tariffs`, { headers }); setTariffs(await res.json()) }
   useEffect(() => { fetchTariffs() }, [])
+
+  const buildBody = (t, e) => {
+    if (t === 'hourly') return { name: e.name, type: 'hourly', price_per_hour: parseFloat(e.pricePerHour) }
+    if (t === 'package') return { name: e.name, type: 'package', total_price: parseFloat(e.totalPrice), duration_minutes: parseInt(e.duration) }
+    if (t === 'timed') return { name: e.name, type: 'timed', total_price: parseFloat(e.totalPrice), start_time: e.startTime, end_time: e.endTime }
+  }
+
   const handleCreate = async () => {
-    if (!name || !price) return
-    await fetch(`${API}/tariffs`, { method: 'POST', headers, body: JSON.stringify({ name, price_per_hour: parseFloat(price), duration_minutes: duration ? parseInt(duration) : null }) })
-    setName(''); setPrice(''); setDuration(''); fetchTariffs()
+    if (!name) return
+    const body = buildBody(type, { name, pricePerHour, totalPrice, duration, startTime, endTime })
+    await fetch(`${API}/tariffs`, { method: 'POST', headers, body: JSON.stringify(body) })
+    setName(''); setPricePerHour(''); setTotalPrice(''); setDuration(''); setStartTime(''); setEndTime('')
+    fetchTariffs()
   }
   const handleDelete = async (id) => {
     if (!confirm('Удалить тариф?')) return
     await fetch(`${API}/tariffs/${id}`, { method: 'DELETE', headers })
     fetchTariffs()
   }
-  const handleEdit = (t) => { setEditId(t.id); setEditName(t.name); setEditPrice(t.price_per_hour); setEditDuration(t.duration_minutes || '') }
+  const handleEdit = (t) => {
+    setEditId(t.id)
+    setEdit({ name: t.name, type: t.type || 'hourly', pricePerHour: t.price_per_hour || '', totalPrice: t.total_price || '', duration: t.duration_minutes || '', startTime: t.start_time || '', endTime: t.end_time || '' })
+  }
   const handleSave = async (id) => {
-    await fetch(`${API}/tariffs/${id}`, { method: 'PUT', headers, body: JSON.stringify({ name: editName, price_per_hour: parseFloat(editPrice), duration_minutes: editDuration ? parseInt(editDuration) : null }) })
+    const body = buildBody(edit.type, edit)
+    await fetch(`${API}/tariffs/${id}`, { method: 'PUT', headers, body: JSON.stringify(body) })
     setEditId(null); fetchTariffs()
   }
+
+  const typeLabel = { hourly: '⏰ Почасовой', package: '📦 Пакет', timed: '🕐 Временной' }
+  const tariffInfo = (t) => {
+    if (t.type === 'package') return `${t.total_price} ₸ · ${t.duration_minutes} мин`
+    if (t.type === 'timed') return `${t.total_price} ₸ · ${t.start_time}–${t.end_time}`
+    return `${t.price_per_hour} ₸/час`
+  }
+
+  const FormFields = ({ vals, onChange }) => (<>
+    {vals.type === 'hourly' && <input className="w-36 border rounded-lg px-3 py-2" placeholder="₸ за час" type="number" value={vals.pricePerHour} onChange={e => onChange('pricePerHour', e.target.value)} />}
+    {vals.type === 'package' && <>
+      <input className="w-36 border rounded-lg px-3 py-2" placeholder="Общая сумма ₸" type="number" value={vals.totalPrice} onChange={e => onChange('totalPrice', e.target.value)} />
+      <input className="w-36 border rounded-lg px-3 py-2" placeholder="Минут" type="number" value={vals.duration} onChange={e => onChange('duration', e.target.value)} />
+    </>}
+    {vals.type === 'timed' && <>
+      <input className="w-36 border rounded-lg px-3 py-2" placeholder="Общая сумма ₸" type="number" value={vals.totalPrice} onChange={e => onChange('totalPrice', e.target.value)} />
+      <input className="w-28 border rounded-lg px-3 py-2" placeholder="Начало" type="time" value={vals.startTime} onChange={e => onChange('startTime', e.target.value)} />
+      <input className="w-28 border rounded-lg px-3 py-2" placeholder="Конец" type="time" value={vals.endTime} onChange={e => onChange('endTime', e.target.value)} />
+    </>}
+  </>)
+
   return (
     <div>
       <div className="bg-white rounded-xl p-5 shadow-md mb-6">
         <h2 className="text-lg font-bold mb-4">➕ Новый тариф</h2>
-        <div className="flex gap-3 flex-wrap">
+        <div className="flex gap-3 flex-wrap items-center">
+          <select className="border rounded-lg px-3 py-2" value={type} onChange={e => setType(e.target.value)}>
+            <option value="hourly">⏰ Почасовой</option>
+            <option value="package">📦 Пакет</option>
+            <option value="timed">🕐 Временной</option>
+          </select>
           <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Название" value={name} onChange={e => setName(e.target.value)} />
-          <input className="w-36 border rounded-lg px-3 py-2" placeholder="₸ за час" type="number" value={price} onChange={e => setPrice(e.target.value)} />
-          <input className="w-36 border rounded-lg px-3 py-2" placeholder="Минут (необяз.)" type="number" value={duration} onChange={e => setDuration(e.target.value)} />
+          <FormFields vals={{ type, pricePerHour, totalPrice, duration, startTime, endTime }} onChange={(k, v) => {
+            if (k === 'pricePerHour') setPricePerHour(v)
+            if (k === 'totalPrice') setTotalPrice(v)
+            if (k === 'duration') setDuration(v)
+            if (k === 'startTime') setStartTime(v)
+            if (k === 'endTime') setEndTime(v)
+          }} />
           <button onClick={handleCreate} className="px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Создать</button>
         </div>
       </div>
@@ -240,16 +286,20 @@ function TariffsTab() {
         <div className="p-4 border-b font-bold text-gray-700">Список тарифов</div>
         {tariffs.length === 0 ? <p className="text-gray-500 text-center p-6">Нет тарифов</p> : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500"><tr><th className="text-left px-4 py-2">Название</th><th className="text-left px-4 py-2">Цена за час</th><th className="text-left px-4 py-2">Длительность</th><th className="px-4 py-2"></th></tr></thead>
+            <thead className="bg-gray-50 text-gray-500"><tr><th className="text-left px-4 py-2">Название</th><th className="text-left px-4 py-2">Тип</th><th className="text-left px-4 py-2">Условия</th><th className="px-4 py-2"></th></tr></thead>
             <tbody>
               {tariffs.map(t => (
                 <tr key={t.id} className="border-t hover:bg-gray-50">
                   {editId === t.id ? (
-                    <td colSpan="4" className="px-4 py-2">
+                    <td colSpan="4" className="px-4 py-3">
                       <div className="flex gap-2 items-center flex-wrap">
-                        <input className="flex-1 border rounded px-2 py-1" value={editName} onChange={e => setEditName(e.target.value)} />
-                        <input className="w-24 border rounded px-2 py-1" type="number" placeholder="₸/час" value={editPrice} onChange={e => setEditPrice(e.target.value)} />
-                        <input className="w-24 border rounded px-2 py-1" type="number" placeholder="Минут" value={editDuration} onChange={e => setEditDuration(e.target.value)} />
+                        <select className="border rounded px-2 py-1" value={edit.type} onChange={e => setEdit({...edit, type: e.target.value})}>
+                          <option value="hourly">⏰ Почасовой</option>
+                          <option value="package">📦 Пакет</option>
+                          <option value="timed">🕐 Временной</option>
+                        </select>
+                        <input className="flex-1 border rounded px-2 py-1" value={edit.name} onChange={e => setEdit({...edit, name: e.target.value})} />
+                        <FormFields vals={edit} onChange={(k, v) => setEdit({...edit, [k]: v})} />
                         <button onClick={() => handleSave(t.id)} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">Сохранить</button>
                         <button onClick={() => setEditId(null)} className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Отмена</button>
                       </div>
@@ -257,8 +307,8 @@ function TariffsTab() {
                   ) : (
                     <>
                       <td className="px-4 py-3 font-medium">{t.name}</td>
-                      <td className="px-4 py-3">{t.price_per_hour} ₸</td>
-                      <td className="px-4 py-3">{t.duration_minutes ? `${t.duration_minutes} мин` : '—'}</td>
+                      <td className="px-4 py-3">{typeLabel[t.type] || '⏰ Почасовой'}</td>
+                      <td className="px-4 py-3 text-gray-600">{tariffInfo(t)}</td>
                       <td className="px-4 py-3 text-right">
                         <button onClick={() => handleEdit(t)} className="text-blue-500 hover:text-blue-700 mr-3">Изменить</button>
                         <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700">Удалить</button>

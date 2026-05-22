@@ -24,8 +24,12 @@ class Tariff(Base):
     __tablename__ = "tariffs"
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
-    price_per_hour = Column(Float, nullable=False)
-    duration_minutes = Column(Integer, nullable=True)
+    type = Column(String, default="hourly")  # hourly, package, timed
+    price_per_hour = Column(Float, nullable=True)   # для почасового
+    total_price = Column(Float, nullable=True)       # для пакета и временного
+    duration_minutes = Column(Integer, nullable=True) # для пакета
+    start_time = Column(String, nullable=True)        # для временного, напр. "08:00"
+    end_time = Column(String, nullable=True)          # для временного, напр. "12:00"
 
 class Client(Base):
     __tablename__ = "clients"
