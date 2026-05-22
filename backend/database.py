@@ -42,6 +42,7 @@ class Client(Base):
     name = Column(String, nullable=False)
     phone = Column(String, nullable=True)
     balance = Column(Float, default=0.0)
+    birthday = Column(String, nullable=True)
 
 class Session(Base):
     __tablename__ = "sessions"

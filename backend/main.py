@@ -54,6 +54,7 @@ def get_computers():
 class CreateClient(BaseModel):
     name: str
     phone: Optional[str] = None
+    birthday: Optional[str] = None
 
 class Deposit(BaseModel):
     amount: float
@@ -65,17 +66,17 @@ class Deposit(BaseModel):
 def get_clients():
     db = SessionLocal()
     clients = db.query(Client).all()
-    result = [{"id": c.id, "name": c.name, "phone": c.phone, "balance": c.balance} for c in clients]
+    result = [{"id": c.id, "name": c.name, "phone": c.phone, "balance": c.balance, "birthday": c.birthday} for c in clients]
     db.close()
     return result
 
 @app.post("/clients")
 def create_client(data: CreateClient):
     db = SessionLocal()
-    client = Client(name=data.name, phone=data.phone, balance=0.0)
+    client = Client(name=data.name, phone=data.phone, balance=0.0, birthday=data.birthday)
     db.add(client)
     db.commit()
-    result = {"id": client.id, "name": client.name, "phone": client.phone, "balance": client.balance}
+    result = {"id": client.id, "name": client.name, "phone": client.phone, "balance": client.balance, "birthday": client.birthday}
     db.close()
     logging.info(f"Клиент создан: {client.name}")
     return result

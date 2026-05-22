@@ -421,7 +421,11 @@ function ClientsTab() {
         {filteredClients.map(client => (
           <div key={client.id} className="bg-white rounded-xl p-5 shadow-md border border-gray-200">
             <div className="flex justify-between items-center mb-2">
-              <div><div className="font-bold text-lg">{client.name}</div><div className="text-sm text-gray-500">{client.phone || 'Телефон не указан'}</div></div>
+              <div>
+                <div className="font-bold text-lg">{client.name}</div>
+                <div className="text-sm text-gray-500">{client.phone || 'Телефон не указан'}</div>
+                {client.birthday && <div className="text-sm text-gray-400">🎂 {new Date(client.birthday).toLocaleDateString('ru-RU')}</div>}
+              </div>
               <div className="text-right"><div className="text-2xl font-bold text-green-600">{client.balance} ₸</div><div className="text-xs text-gray-400">баланс</div></div>
             </div>
             {selectedClient === client.id ? (
