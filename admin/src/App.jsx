@@ -343,14 +343,14 @@ function ClientsTab() {
 
   const handlePhoneChange = (e) => {
     let val = e.target.value
-    const digits = val.replace(/\D/g, '').slice(0, 11)
-    const d = digits.startsWith('7') ? digits.slice(1) : digits.startsWith('8') ? digits.slice(1) : digits
-    const t = d.slice(0, 10)
+    // Не даём стереть +7
+    if (!val.startsWith('+7')) { setPhone('+7'); return }
+    const digits = val.slice(2).replace(/\D/g, '').slice(0, 10)
     let formatted = '+7'
-    if (t.length > 0) formatted += ' (' + t.slice(0, 3)
-    if (t.length >= 3) formatted += ') ' + t.slice(3, 6)
-    if (t.length >= 6) formatted += ' ' + t.slice(6, 8)
-    if (t.length >= 8) formatted += ' ' + t.slice(8, 10)
+    if (digits.length > 0) formatted += ' (' + digits.slice(0, 3)
+    if (digits.length >= 3) formatted += ') ' + digits.slice(3, 6)
+    if (digits.length >= 6) formatted += ' ' + digits.slice(6, 8)
+    if (digits.length >= 8) formatted += ' ' + digits.slice(8, 10)
     setPhone(formatted)
   }
   const phoneDigits = phone.replace(/\D/g, '')
