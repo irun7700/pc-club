@@ -57,6 +57,9 @@ class CreateClient(BaseModel):
 
 class Deposit(BaseModel):
     amount: float
+    payment_method: str = "cash"  # cash, card, mixed
+    cash_amount: float = None
+    card_amount: float = None
 
 @app.get("/clients")
 def get_clients():
@@ -88,13 +91,16 @@ def deposit(client_id: int, data: Deposit):
     transaction = Transaction(
         client_id=client_id,
         amount=data.amount,
-        type="deposit"
+        type="deposit",
+        payment_method=data.payment_method,
+        cash_amount=data.cash_amount,
+        card_amount=data.card_amount
     )
     db.add(transaction)
     db.commit()
     result = {"id": client.id, "name": client.name, "balance": client.balance}
     db.close()
-    logging.info(f"Пополнение баланса клиента {client_id}: {data.amount}")
+    logging.info(f"Пополнение баланса клиента {client_id}: {data.amount} ({data.payment_method})")
     return result
 
 # --- Сессии ---

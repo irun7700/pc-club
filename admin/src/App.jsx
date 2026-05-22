@@ -332,6 +332,9 @@ function ClientsTab() {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [depositAmount, setDepositAmount] = useState('')
+  const [depositMethod, setDepositMethod] = useState('cash')
+  const [cashAmount, setCashAmount] = useState('')
+  const [cardAmount, setCardAmount] = useState('')
   const [selectedClient, setSelectedClient] = useState(null)
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
   const fetchClients = async () => { const res = await fetch(`${API}/clients`, { headers }); setClients(await res.json()) }
@@ -342,10 +345,17 @@ function ClientsTab() {
     setName(''); setPhone(''); fetchClients()
   }
   const handleDeposit = async (clientId) => {
-    if (!depositAmount) return
-    await fetch(`${API}/clients/${clientId}/deposit`, { method: 'POST', headers, body: JSON.stringify({ amount: parseFloat(depositAmount) }) })
-    setDepositAmount(''); setSelectedClient(null); fetchClients()
+    if (depositMethod === 'mixed') {
+      if (!cashAmount && !cardAmount) return
+      const total = parseFloat(cashAmount || 0) + parseFloat(cardAmount || 0)
+      await fetch(`${API}/clients/${clientId}/deposit`, { method: 'POST', headers, body: JSON.stringify({ amount: total, payment_method: 'mixed', cash_amount: parseFloat(cashAmount || 0), card_amount: parseFloat(cardAmount || 0) }) })
+    } else {
+      if (!depositAmount) return
+      await fetch(`${API}/clients/${clientId}/deposit`, { method: 'POST', headers, body: JSON.stringify({ amount: parseFloat(depositAmount), payment_method: depositMethod }) })
+    }
+    setDepositAmount(''); setCashAmount(''); setCardAmount(''); setSelectedClient(null); fetchClients()
   }
+  const methodLabel = { cash: '💵 Наличные', card: '💳 Карта', mixed: '🔀 Смешанная' }
   return (
     <div>
       <div className="bg-white rounded-xl p-5 shadow-md mb-6">
@@ -364,10 +374,26 @@ function ClientsTab() {
               <div className="text-right"><div className="text-2xl font-bold text-green-600">{client.balance} ₸</div><div className="text-xs text-gray-400">баланс</div></div>
             </div>
             {selectedClient === client.id ? (
-              <div className="flex gap-2 mt-3">
-                <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Сумма" type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} />
-                <button onClick={() => handleDeposit(client.id)} className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">✓</button>
-                <button onClick={() => setSelectedClient(null)} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">✕</button>
+              <div className="mt-3 space-y-2">
+                <div className="flex gap-2">
+                  {['cash', 'card', 'mixed'].map(m => (
+                    <button key={m} onClick={() => setDepositMethod(m)} className={`flex-1 py-1.5 rounded-lg text-sm font-medium border ${depositMethod === m ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
+                      {methodLabel[m]}
+                    </button>
+                  ))}
+                </div>
+                {depositMethod === 'mixed' ? (
+                  <div className="flex gap-2">
+                    <input className="flex-1 border rounded-lg px-3 py-2" placeholder="💵 Наличные" type="number" value={cashAmount} onChange={e => setCashAmount(e.target.value)} />
+                    <input className="flex-1 border rounded-lg px-3 py-2" placeholder="💳 Карта" type="number" value={cardAmount} onChange={e => setCardAmount(e.target.value)} />
+                  </div>
+                ) : (
+                  <input className="w-full border rounded-lg px-3 py-2" placeholder="Сумма" type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} />
+                )}
+                <div className="flex gap-2">
+                  <button onClick={() => handleDeposit(client.id)} className="flex-1 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">Пополнить</button>
+                  <button onClick={() => { setSelectedClient(null); setDepositAmount(''); setCashAmount(''); setCardAmount('') }} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Отмена</button>
+                </div>
               </div>
             ) : (
               <button onClick={() => setSelectedClient(client.id)} className="mt-3 w-full py-2 bg-green-50 text-green-700 border border-green-300 rounded-lg hover:bg-green-100">+ Пополнить баланс</button>

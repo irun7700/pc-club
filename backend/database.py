@@ -54,6 +54,9 @@ class Transaction(Base):
     client_id = Column(Integer, ForeignKey("clients.id"))
     amount = Column(Float, nullable=False)
     type = Column(String, nullable=False)
+    payment_method = Column(String, nullable=True)  # cash, card, mixed
+    cash_amount = Column(Float, nullable=True)
+    card_amount = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
