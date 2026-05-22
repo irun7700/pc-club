@@ -387,8 +387,11 @@ function ClientsTab() {
           <button onClick={handleCreate} className="px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Создать</button>
         </div>
       </div>
+      <div className="mb-4">
+        <input className="w-full border rounded-lg px-3 py-2" placeholder="🔍 Поиск по имени или последним 4 цифрам номера..." value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {clients.map(client => (
+        {filteredClients.map(client => (
           <div key={client.id} className="bg-white rounded-xl p-5 shadow-md border border-gray-200">
             <div className="flex justify-between items-center mb-2">
               <div><div className="font-bold text-lg">{client.name}</div><div className="text-sm text-gray-500">{client.phone || 'Телефон не указан'}</div></div>
