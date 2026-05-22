@@ -198,6 +198,21 @@ function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clie
   )
 }
 
+function TariffFormFields({ vals, onChange }) {
+  return (<>
+    {vals.type === 'hourly' && <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Цена за час (₸)" type="number" value={vals.pricePerHour} onChange={e => onChange('pricePerHour', e.target.value)} />}
+    {vals.type === 'package' && <>
+      <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Общая сумма ₸" type="number" value={vals.totalPrice} onChange={e => onChange('totalPrice', e.target.value)} />
+      <input className="w-36 border rounded-lg px-3 py-2" placeholder="Минут" type="number" value={vals.duration} onChange={e => onChange('duration', e.target.value)} />
+    </>}
+    {vals.type === 'timed' && <>
+      <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Общая сумма ₸" type="number" value={vals.totalPrice} onChange={e => onChange('totalPrice', e.target.value)} />
+      <input className="w-28 border rounded-lg px-3 py-2" placeholder="Начало" type="time" value={vals.startTime} onChange={e => onChange('startTime', e.target.value)} />
+      <input className="w-28 border rounded-lg px-3 py-2" placeholder="Конец" type="time" value={vals.endTime} onChange={e => onChange('endTime', e.target.value)} />
+    </>}
+  </>)
+}
+
 function TariffsTab() {
   const [tariffs, setTariffs] = useState([])
   const [type, setType] = useState('hourly')
@@ -248,19 +263,6 @@ function TariffsTab() {
     return `${t.price_per_hour} ₸/час`
   }
 
-  const FormFields = ({ vals, onChange }) => (<>
-    {vals.type === 'hourly' && <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Цена за час (₸)" type="number" value={vals.pricePerHour} onChange={e => onChange('pricePerHour', e.target.value)} />}
-    {vals.type === 'package' && <>
-      <input className="w-36 border rounded-lg px-3 py-2" placeholder="Общая сумма ₸" type="number" value={vals.totalPrice} onChange={e => onChange('totalPrice', e.target.value)} />
-      <input className="w-36 border rounded-lg px-3 py-2" placeholder="Минут" type="number" value={vals.duration} onChange={e => onChange('duration', e.target.value)} />
-    </>}
-    {vals.type === 'timed' && <>
-      <input className="w-36 border rounded-lg px-3 py-2" placeholder="Общая сумма ₸" type="number" value={vals.totalPrice} onChange={e => onChange('totalPrice', e.target.value)} />
-      <input className="w-28 border rounded-lg px-3 py-2" placeholder="Начало" type="time" value={vals.startTime} onChange={e => onChange('startTime', e.target.value)} />
-      <input className="w-28 border rounded-lg px-3 py-2" placeholder="Конец" type="time" value={vals.endTime} onChange={e => onChange('endTime', e.target.value)} />
-    </>}
-  </>)
-
   return (
     <div>
       <div className="bg-white rounded-xl p-5 shadow-md mb-6">
@@ -272,7 +274,7 @@ function TariffsTab() {
             <option value="timed">🕐 Временной</option>
           </select>
           <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Название" value={name} onChange={e => setName(e.target.value)} />
-          <FormFields vals={{ type, pricePerHour, totalPrice, duration, startTime, endTime }} onChange={(k, v) => {
+          <TariffFormFields vals={{ type, pricePerHour, totalPrice, duration, startTime, endTime }} onChange={(k, v) => {
             if (k === 'pricePerHour') setPricePerHour(v)
             if (k === 'totalPrice') setTotalPrice(v)
             if (k === 'duration') setDuration(v)
@@ -299,7 +301,7 @@ function TariffsTab() {
                           <option value="timed">🕐 Временной</option>
                         </select>
                         <input className="flex-1 border rounded px-2 py-1" value={edit.name} onChange={e => setEdit({...edit, name: e.target.value})} />
-                        <FormFields vals={edit} onChange={(k, v) => setEdit({...edit, [k]: v})} />
+                        <TariffFormFields vals={edit} onChange={(k, v) => setEdit({...edit, [k]: v})} />
                         <button onClick={() => handleSave(t.id)} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">Сохранить</button>
                         <button onClick={() => setEditId(null)} className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Отмена</button>
                       </div>
