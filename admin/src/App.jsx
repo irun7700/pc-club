@@ -326,6 +326,7 @@ function StaffTab() {
   const [role, setRole] = useState('admin')
   const [editId, setEditId] = useState(null)
   const [editPassword, setEditPassword] = useState('')
+  const [editUsername, setEditUsername] = useState('')
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
   const fetchUsers = async () => { const res = await fetch(`${API}/users`, { headers }); setUsers(await res.json()) }
   useEffect(() => { fetchUsers() }, [])
@@ -339,10 +340,13 @@ function StaffTab() {
     await fetch(`${API}/users/${id}`, { method: 'DELETE', headers })
     fetchUsers()
   }
-  const handleSavePassword = async (id) => {
-    if (!editPassword) return
-    await fetch(`${API}/users/${id}`, { method: 'PUT', headers, body: JSON.stringify({ password: editPassword }) })
-    setEditId(null); setEditPassword(''); fetchUsers()
+  const handleSave = async (id) => {
+    const body = {}
+    if (editPassword) body.password = editPassword
+    if (editUsername) body.username = editUsername
+    if (!body.password && !body.username) return
+    await fetch(`${API}/users/${id}`, { method: 'PUT', headers, body: JSON.stringify(body) })
+    setEditId(null); setEditPassword(''); setEditUsername(''); fetchUsers()
   }
   const roleLabel = { owner: '👑 Владелец', manager: '🔑 Управляющий', admin: '👤 Администратор' }
   return (
@@ -370,14 +374,15 @@ function StaffTab() {
                 <td className="px-4 py-3">{roleLabel[u.role] || u.role}</td>
                 <td className="px-4 py-3 text-right">
                   {editId === u.id ? (
-                    <span className="flex gap-2 justify-end items-center">
+                    <span className="flex gap-2 justify-end items-center flex-wrap">
+                      <input className="border rounded px-2 py-1 w-32" placeholder="Новый логин" value={editUsername} onChange={e => setEditUsername(e.target.value)} />
                       <input className="border rounded px-2 py-1 w-32" type="password" placeholder="Новый пароль" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
-                      <button onClick={() => handleSavePassword(u.id)} className="text-green-600 hover:text-green-800 font-medium">Сохранить</button>
+                      <button onClick={() => handleSave(u.id)} className="text-green-600 hover:text-green-800 font-medium">Сохранить</button>
                       <button onClick={() => setEditId(null)} className="text-gray-400 hover:text-gray-600">Отмена</button>
                     </span>
                   ) : (
                     <span className="flex gap-3 justify-end">
-                      {u.role !== 'owner' && <button onClick={() => { setEditId(u.id); setEditPassword('') }} className="text-blue-500 hover:text-blue-700">Изменить пароль</button>}
+                      {u.role !== 'owner' && <button onClick={() => { setEditId(u.id); setEditPassword(''); setEditUsername(u.username) }} className="text-blue-500 hover:text-blue-700">Редактировать</button>}
                       {u.role !== 'owner' && <button onClick={() => handleDelete(u.id)} className="text-red-500 hover:text-red-700">Удалить</button>}
                     </span>
                   )}
