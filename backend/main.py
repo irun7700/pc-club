@@ -478,3 +478,11 @@ def reset_owner_password():
         db.commit()
     db.close()
     return {"status": "ok", "message": "Пароль сброшен на owner123"}
+
+@app.get("/check-users")
+def check_users():
+    db = SessionLocal()
+    users = db.query(User).all()
+    result = [{"id": u.id, "username": u.username, "role": u.role} for u in users]
+    db.close()
+    return result
