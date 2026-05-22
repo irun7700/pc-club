@@ -249,7 +249,7 @@ function TariffsTab() {
   }
 
   const FormFields = ({ vals, onChange }) => (<>
-    {vals.type === 'hourly' && <input className="w-48 border rounded-lg px-3 py-2" placeholder="₸ за час" type="number" min="0" step="any" value={vals.pricePerHour} onChange={e => onChange('pricePerHour', e.target.value)} />}
+    {vals.type === 'hourly' && <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Цена за час (₸)" type="text" inputMode="numeric" value={vals.pricePerHour} onChange={e => onChange('pricePerHour', e.target.value)} />}
     {vals.type === 'package' && <>
       <input className="w-36 border rounded-lg px-3 py-2" placeholder="Общая сумма ₸" type="number" value={vals.totalPrice} onChange={e => onChange('totalPrice', e.target.value)} />
       <input className="w-36 border rounded-lg px-3 py-2" placeholder="Минут" type="number" value={vals.duration} onChange={e => onChange('duration', e.target.value)} />
