@@ -383,8 +383,19 @@ function ClientsTab() {
         <h2 className="text-lg font-bold mb-4">➕ Новый клиент</h2>
         <div className="flex gap-3">
           <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Имя" value={name} onChange={e => setName(e.target.value)} />
-          <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Телефон" value={phone} onChange={e => setPhone(e.target.value)} />
-          <button onClick={handleCreate} className="px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Создать</button>
+          <div className="flex-1">
+            <input
+              className={`w-full border rounded-lg px-3 py-2 ${phoneValid ? 'border-green-400' : phone.replace(/\D/g,'').length > 1 ? 'border-red-400' : 'border-gray-300'}`}
+              placeholder="+7 (xxx) xxx xx xx"
+              value={phone}
+              onChange={handlePhoneChange}
+              maxLength={18}
+            />
+            {!phoneValid && phone.replace(/\D/g,'').length > 1 && (
+              <div className="text-xs text-red-500 mt-1">Введите полный номер: +7 (xxx) xxx xx xx</div>
+            )}
+          </div>
+          <button onClick={handleCreate} disabled={!name || !phoneValid} className="px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-40">Создать</button>
         </div>
       </div>
       <div className="mb-4">
