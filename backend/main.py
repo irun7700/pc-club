@@ -18,7 +18,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://preeminent-meringue-a0a982.netlify.app"],
+    allow_origins=["http://localhost:5173", "https://preeminent-meringue-a0a982.netlify.app", "https://lavish-abundance-production-537b.up.railway.app"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
