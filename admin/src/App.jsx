@@ -330,7 +330,8 @@ function TariffsTab() {
 function ClientsTab() {
   const [clients, setClients] = useState([])
   const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
+  const [phone, setPhone] = useState('+7')
+  const [search, setSearch] = useState('')
   const [depositAmount, setDepositAmount] = useState('')
   const [depositMethod, setDepositMethod] = useState('cash')
   const [cashAmount, setCashAmount] = useState('')
@@ -339,11 +340,31 @@ function ClientsTab() {
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
   const fetchClients = async () => { const res = await fetch(`${API}/clients`, { headers }); setClients(await res.json()) }
   useEffect(() => { fetchClients() }, [])
-  const handleCreate = async () => {
-    if (!name) return
-    await fetch(`${API}/clients`, { method: 'POST', headers, body: JSON.stringify({ name, phone }) })
-    setName(''); setPhone(''); fetchClients()
+
+  const handlePhoneChange = (e) => {
+    let val = e.target.value
+    const digits = val.replace(/\D/g, '').slice(0, 11)
+    const d = digits.startsWith('7') ? digits.slice(1) : digits.startsWith('8') ? digits.slice(1) : digits
+    const t = d.slice(0, 10)
+    let formatted = '+7'
+    if (t.length > 0) formatted += ' (' + t.slice(0, 3)
+    if (t.length >= 3) formatted += ') ' + t.slice(3, 6)
+    if (t.length >= 6) formatted += ' ' + t.slice(6, 8)
+    if (t.length >= 8) formatted += ' ' + t.slice(8, 10)
+    setPhone(formatted)
   }
+  const phoneDigits = phone.replace(/\D/g, '')
+  const phoneValid = phoneDigits.length === 11
+
+  const handleCreate = async () => {
+    if (!name || !phoneValid) return
+    await fetch(`${API}/clients`, { method: 'POST', headers, body: JSON.stringify({ name, phone }) })
+    setName(''); setPhone('+7'); fetchClients()
+  }
+
+  const filteredClients = search.length >= 2
+    ? clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || (c.phone && c.phone.includes(search)))
+    : clients
   const handleDeposit = async (clientId) => {
     if (depositMethod === 'mixed') {
       if (!cashAmount && !cardAmount) return
