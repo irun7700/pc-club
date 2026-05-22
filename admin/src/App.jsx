@@ -363,7 +363,13 @@ function ClientsTab() {
   }
 
   const filteredClients = search.length >= 2
-    ? clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || (c.phone && c.phone.includes(search)))
+    ? clients.filter(c => {
+        const searchClean = search.replace(/\D/g, '')
+        const phoneClean = (c.phone || '').replace(/\D/g, '')
+        return c.name.toLowerCase().includes(search.toLowerCase()) || 
+               (searchClean.length >= 2 && phoneClean.includes(searchClean)) ||
+               (c.phone && c.phone.includes(search))
+      })
     : clients
   const handleDeposit = async (clientId) => {
     if (depositMethod === 'mixed') {
