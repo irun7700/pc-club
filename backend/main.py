@@ -486,3 +486,19 @@ def check_users():
     result = [{"id": u.id, "username": u.username, "role": u.role} for u in users]
     db.close()
     return result
+
+@app.get("/create-owner")
+def create_owner():
+    from auth import hash_password
+    db = SessionLocal()
+    existing = db.query(User).filter(User.username == "owner").first()
+    if existing:
+        existing.password_hash = hash_password("owner123")
+        db.commit()
+        db.close()
+        return {"status": "updated", "message": "Пароль обновлён на owner123"}
+    u = User(username="owner", password_hash=hash_password("owner123"), role="owner")
+    db.add(u)
+    db.commit()
+    db.close()
+    return {"status": "created", "message": "Owner создан с паролем owner123"}
