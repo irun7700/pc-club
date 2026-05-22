@@ -341,17 +341,26 @@ function ClientsTab() {
   const fetchClients = async () => { const res = await fetch(`${API}/clients`, { headers }); setClients(await res.json()) }
   useEffect(() => { fetchClients() }, [])
 
+  const formatPhone = (digits) => {
+    const d = digits.slice(0, 10)
+    let f = '+7'
+    if (d.length > 0) f += ' (' + d.slice(0, 3)
+    if (d.length >= 3) f += ') ' + d.slice(3, 6)
+    if (d.length >= 6) f += ' ' + d.slice(6, 8)
+    if (d.length >= 8) f += ' ' + d.slice(8, 10)
+    return f
+  }
   const handlePhoneChange = (e) => {
-    let val = e.target.value
-    // Не даём стереть +7
-    if (!val.startsWith('+7')) { setPhone('+7'); return }
-    const digits = val.slice(2).replace(/\D/g, '').slice(0, 10)
-    let formatted = '+7'
-    if (digits.length > 0) formatted += ' (' + digits.slice(0, 3)
-    if (digits.length >= 3) formatted += ') ' + digits.slice(3, 6)
-    if (digits.length >= 6) formatted += ' ' + digits.slice(6, 8)
-    if (digits.length >= 8) formatted += ' ' + digits.slice(8, 10)
-    setPhone(formatted)
+    const digits = e.target.value.replace(/\D/g, '').replace(/^[78]/, '').slice(0, 10)
+    setPhone(formatPhone(digits))
+  }
+  const handlePhoneKey = (e) => {
+    if (e.key === 'Backspace') {
+      e.preventDefault()
+      const digits = phone.replace(/\D/g, '').slice(1) // убираем 7
+      const newDigits = digits.slice(0, -1)
+      setPhone(formatPhone(newDigits))
+    }
   }
   const phoneDigits = phone.replace(/\D/g, '')
   const phoneValid = phoneDigits.length === 11
@@ -395,6 +404,7 @@ function ClientsTab() {
               placeholder="+7 (xxx) xxx xx xx"
               value={phone}
               onChange={handlePhoneChange}
+              onKeyDown={handlePhoneKey}
               maxLength={18}
             />
             {!phoneValid && phone.replace(/\D/g,'').length > 1 && (
