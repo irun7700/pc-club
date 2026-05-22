@@ -476,36 +476,6 @@ def update_user(user_id: int, data: UpdateUser, user=Depends(require_role("owner
     result = {"id": u.id, "username": u.username, "role": u.role}
     db.close()
     return result
-
-@app.get("/reset-owner-password")
-def reset_owner_password():
-    from auth import hash_password
-    db = SessionLocal()
-    u = db.query(User).filter(User.role == "owner").first()
-    if u:
-        u.password_hash = hash_password("owner123")
-        db.commit()
-    db.close()
-    return {"status": "ok", "message": "Пароль сброшен на owner123"}
-
-@app.get("/check-users")
-def check_users():
-    db = SessionLocal()
-    users = db.query(User).all()
-    result = [{"id": u.id, "username": u.username, "role": u.role} for u in users]
-    db.close()
-    return result
-
-@app.get("/create-owner")
-def create_owner():
-    from auth import hash_password
-    db = SessionLocal()
-    existing = db.query(User).filter(User.username == "owner").first()
-    if existing:
-        existing.password_hash = hash_password("owner123")
-        db.commit()
-        db.close()
-        return {"status": "updated", "message": "Пароль обновлён на owner123"}
     u = User(username="owner", password_hash=hash_password("owner123"), role="owner")
     db.add(u)
     db.commit()
