@@ -26,6 +26,15 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     init_db()
+    # Автосоздание owner если не существует
+    db = SessionLocal()
+    from auth import hash_password
+    existing = db.query(User).filter(User.role == "owner").first()
+    if not existing:
+        u = User(username="owner", password_hash=hash_password("owner123"), role="owner")
+        db.add(u)
+        db.commit()
+    db.close()
     asyncio.create_task(check_offline())
 
 @app.get("/health")
