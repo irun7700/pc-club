@@ -462,7 +462,8 @@ def delete_computer(computer_id: int, user=Depends(require_role("owner"))):
 
 
 class UpdateUser(BaseModel):
-    password: str
+    password: str = None
+    username: str = None
 
 @app.put("/users/{user_id}")
 def update_user(user_id: int, data: UpdateUser, user=Depends(require_role("owner"))):
@@ -471,7 +472,10 @@ def update_user(user_id: int, data: UpdateUser, user=Depends(require_role("owner
     if not u:
         db.close()
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    u.password_hash = hash_password(data.password)
+    if data.password:
+        u.password_hash = hash_password(data.password)
+    if data.username:
+        u.username = data.username
     db.commit()
     result = {"id": u.id, "username": u.username, "role": u.role}
     db.close()

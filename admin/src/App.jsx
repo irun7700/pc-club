@@ -324,6 +324,8 @@ function StaffTab() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('admin')
+  const [editId, setEditId] = useState(null)
+  const [editPassword, setEditPassword] = useState('')
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
   const fetchUsers = async () => { const res = await fetch(`${API}/users`, { headers }); setUsers(await res.json()) }
   useEffect(() => { fetchUsers() }, [])
@@ -336,6 +338,11 @@ function StaffTab() {
     if (!confirm('Удалить сотрудника?')) return
     await fetch(`${API}/users/${id}`, { method: 'DELETE', headers })
     fetchUsers()
+  }
+  const handleSavePassword = async (id) => {
+    if (!editPassword) return
+    await fetch(`${API}/users/${id}`, { method: 'PUT', headers, body: JSON.stringify({ password: editPassword }) })
+    setEditId(null); setEditPassword(''); fetchUsers()
   }
   const roleLabel = { owner: '👑 Владелец', manager: '🔑 Управляющий', admin: '👤 Администратор' }
   return (
@@ -362,7 +369,18 @@ function StaffTab() {
                 <td className="px-4 py-3 font-medium">{u.username}</td>
                 <td className="px-4 py-3">{roleLabel[u.role] || u.role}</td>
                 <td className="px-4 py-3 text-right">
-                  {u.role !== 'owner' && <button onClick={() => handleDelete(u.id)} className="text-red-500 hover:text-red-700">Удалить</button>}
+                  {editId === u.id ? (
+                    <span className="flex gap-2 justify-end items-center">
+                      <input className="border rounded px-2 py-1 w-32" type="password" placeholder="Новый пароль" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
+                      <button onClick={() => handleSavePassword(u.id)} className="text-green-600 hover:text-green-800 font-medium">Сохранить</button>
+                      <button onClick={() => setEditId(null)} className="text-gray-400 hover:text-gray-600">Отмена</button>
+                    </span>
+                  ) : (
+                    <span className="flex gap-3 justify-end">
+                      {u.role !== 'owner' && <button onClick={() => { setEditId(u.id); setEditPassword('') }} className="text-blue-500 hover:text-blue-700">Изменить пароль</button>}
+                      {u.role !== 'owner' && <button onClick={() => handleDelete(u.id)} className="text-red-500 hover:text-red-700">Удалить</button>}
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}
