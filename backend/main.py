@@ -181,13 +181,15 @@ def get_active_sessions():
     result = []
     for s in sessions:
         duration = (datetime.datetime.utcnow() - s.started_at).seconds / 60
+        tariff = db.query(Tariff).filter(Tariff.id == s.tariff_id).first()
         result.append({
             "session_id": s.id,
             "computer_id": s.computer_id,
             "tariff_id": s.tariff_id,
             "client_id": s.client_id,
             "started_at": str(s.started_at),
-            "duration_minutes": round(duration, 1)
+            "duration_minutes": round(duration, 1),
+            "tariff_duration": tariff.duration_minutes if tariff else None
         })
     db.close()
     return result
@@ -265,22 +267,23 @@ def today_report():
 class CreateTariff(BaseModel):
     name: str
     price_per_hour: float
+    duration_minutes: int = None
 
 @app.get("/tariffs")
 def get_tariffs():
     db = SessionLocal()
     tariffs = db.query(Tariff).all()
-    result = [{"id": t.id, "name": t.name, "price_per_hour": t.price_per_hour} for t in tariffs]
+    result = [{"id": t.id, "name": t.name, "price_per_hour": t.price_per_hour, "duration_minutes": t.duration_minutes} for t in tariffs]
     db.close()
     return result
 
 @app.post("/tariffs")
 def create_tariff(data: CreateTariff):
     db = SessionLocal()
-    tariff = Tariff(name=data.name, price_per_hour=data.price_per_hour)
+    tariff = Tariff(name=data.name, price_per_hour=data.price_per_hour, duration_minutes=data.duration_minutes)
     db.add(tariff)
     db.commit()
-    result = {"id": tariff.id, "name": tariff.name, "price_per_hour": tariff.price_per_hour}
+    result = {"id": tariff.id, "name": tariff.name, "price_per_hour": tariff.price_per_hour, "duration_minutes": tariff.duration_minutes}
     db.close()
     return result
 

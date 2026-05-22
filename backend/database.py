@@ -25,6 +25,7 @@ class Tariff(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     price_per_hour = Column(Float, nullable=False)
+    duration_minutes = Column(Integer, nullable=True)
 
 class Client(Base):
     __tablename__ = "clients"

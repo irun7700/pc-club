@@ -119,22 +119,68 @@ function StartModal({ computer, clients, tariffs, onConfirm, onCancel }) {
   )
 }
 
+function playBeep(urgent = false) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const count = urgent ? 3 : 1
+    for (let i = 0; i < count; i++) {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.frequency.value = urgent ? 880 : 660
+      osc.type = 'sine'
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.4)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.4 + 0.3)
+      osc.start(ctx.currentTime + i * 0.4)
+      osc.stop(ctx.currentTime + i * 0.4 + 0.3)
+    }
+  } catch(e) {}
+}
+
 function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clients, tariffs, userRole }) {
   const isOnline = computer.status === 'online'
   const hasSession = activeSession !== null
   const client = activeSession?.client_id ? clients.find(c => c.id === activeSession.client_id) : null
   const tariff = activeSession?.tariff_id ? tariffs.find(t => t.id === activeSession.tariff_id) : null
+  const [alert15, setAlert15] = useState(false)
+  const [alert5, setAlert5] = useState(false)
+  const notifiedRef = React.useRef({ n15: false, n5: false })
+
+  const tariffDuration = activeSession?.tariff_duration || tariff?.duration_minutes || null
+  const minutesLeft = tariffDuration ? Math.max(0, tariffDuration - activeSession.duration_minutes) : null
+
+  useEffect(() => {
+    if (!hasSession || minutesLeft === null) {
+      notifiedRef.current = { n15: false, n5: false }
+      setAlert15(false); setAlert5(false)
+      return
+    }
+    if (minutesLeft <= 5 && !notifiedRef.current.n5) {
+      notifiedRef.current.n5 = true
+      setAlert5(true); setAlert15(false)
+      playBeep(true)
+    } else if (minutesLeft <= 15 && !notifiedRef.current.n15) {
+      notifiedRef.current.n15 = true
+      setAlert15(true)
+      playBeep(false)
+    }
+  }, [minutesLeft, hasSession])
+
+  const alertColor = alert5 ? 'border-red-500 bg-red-50' : alert15 ? 'border-yellow-400 bg-yellow-50' : isOnline ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'
+
   return (
-    <div className={`rounded-xl p-5 shadow-md border-2 ${isOnline ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+    <div className={`rounded-xl p-5 shadow-md border-2 ${alertColor}`}>
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-xl font-bold">{computer.name}</h2>
         <span className={`text-sm px-2 py-1 rounded-full font-medium ${isOnline ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
           {isOnline ? '🟢 Online' : '⚫ Offline'}
         </span>
       </div>
+      {alert5 && <div className="mb-2 px-3 py-2 bg-red-100 border border-red-400 rounded-lg text-red-700 text-sm font-bold animate-pulse">🚨 Осталось менее 5 минут!</div>}
+      {alert15 && !alert5 && <div className="mb-2 px-3 py-2 bg-yellow-100 border border-yellow-400 rounded-lg text-yellow-700 text-sm font-medium">⚠️ Осталось менее 15 минут</div>}
       {hasSession && (
         <div className="text-sm text-blue-700 mb-3 space-y-1">
-          <div>⏱ {activeSession.duration_minutes} мин · {tariff ? tariff.name : ''}</div>
+          <div>⏱ {activeSession.duration_minutes} мин · {tariff ? tariff.name : ''}{minutesLeft !== null ? ` · осталось ${Math.round(minutesLeft)} мин` : ''}</div>
           {client ? <div>👤 {client.name} — {client.balance} ₸</div> : <div>👤 Без клиента</div>}
         </div>
       )}
@@ -156,34 +202,37 @@ function TariffsTab() {
   const [tariffs, setTariffs] = useState([])
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
+  const [duration, setDuration] = useState('')
   const [editId, setEditId] = useState(null)
   const [editName, setEditName] = useState('')
   const [editPrice, setEditPrice] = useState('')
+  const [editDuration, setEditDuration] = useState('')
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
   const fetchTariffs = async () => { const res = await fetch(`${API}/tariffs`, { headers }); setTariffs(await res.json()) }
   useEffect(() => { fetchTariffs() }, [])
   const handleCreate = async () => {
     if (!name || !price) return
-    await fetch(`${API}/tariffs`, { method: 'POST', headers, body: JSON.stringify({ name, price_per_hour: parseFloat(price) }) })
-    setName(''); setPrice(''); fetchTariffs()
+    await fetch(`${API}/tariffs`, { method: 'POST', headers, body: JSON.stringify({ name, price_per_hour: parseFloat(price), duration_minutes: duration ? parseInt(duration) : null }) })
+    setName(''); setPrice(''); setDuration(''); fetchTariffs()
   }
   const handleDelete = async (id) => {
     if (!confirm('Удалить тариф?')) return
     await fetch(`${API}/tariffs/${id}`, { method: 'DELETE', headers })
     fetchTariffs()
   }
-  const handleEdit = (t) => { setEditId(t.id); setEditName(t.name); setEditPrice(t.price_per_hour) }
+  const handleEdit = (t) => { setEditId(t.id); setEditName(t.name); setEditPrice(t.price_per_hour); setEditDuration(t.duration_minutes || '') }
   const handleSave = async (id) => {
-    await fetch(`${API}/tariffs/${id}`, { method: 'PUT', headers, body: JSON.stringify({ name: editName, price_per_hour: parseFloat(editPrice) }) })
+    await fetch(`${API}/tariffs/${id}`, { method: 'PUT', headers, body: JSON.stringify({ name: editName, price_per_hour: parseFloat(editPrice), duration_minutes: editDuration ? parseInt(editDuration) : null }) })
     setEditId(null); fetchTariffs()
   }
   return (
     <div>
       <div className="bg-white rounded-xl p-5 shadow-md mb-6">
         <h2 className="text-lg font-bold mb-4">➕ Новый тариф</h2>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Название" value={name} onChange={e => setName(e.target.value)} />
-          <input className="w-40 border rounded-lg px-3 py-2" placeholder="₸ за час" type="number" value={price} onChange={e => setPrice(e.target.value)} />
+          <input className="w-36 border rounded-lg px-3 py-2" placeholder="₸ за час" type="number" value={price} onChange={e => setPrice(e.target.value)} />
+          <input className="w-36 border rounded-lg px-3 py-2" placeholder="Минут (необяз.)" type="number" value={duration} onChange={e => setDuration(e.target.value)} />
           <button onClick={handleCreate} className="px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Создать</button>
         </div>
       </div>
@@ -191,15 +240,16 @@ function TariffsTab() {
         <div className="p-4 border-b font-bold text-gray-700">Список тарифов</div>
         {tariffs.length === 0 ? <p className="text-gray-500 text-center p-6">Нет тарифов</p> : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500"><tr><th className="text-left px-4 py-2">Название</th><th className="text-left px-4 py-2">Цена за час</th><th className="px-4 py-2"></th></tr></thead>
+            <thead className="bg-gray-50 text-gray-500"><tr><th className="text-left px-4 py-2">Название</th><th className="text-left px-4 py-2">Цена за час</th><th className="text-left px-4 py-2">Длительность</th><th className="px-4 py-2"></th></tr></thead>
             <tbody>
               {tariffs.map(t => (
                 <tr key={t.id} className="border-t hover:bg-gray-50">
                   {editId === t.id ? (
-                    <td colSpan="3" className="px-4 py-2">
-                      <div className="flex gap-2 items-center">
+                    <td colSpan="4" className="px-4 py-2">
+                      <div className="flex gap-2 items-center flex-wrap">
                         <input className="flex-1 border rounded px-2 py-1" value={editName} onChange={e => setEditName(e.target.value)} />
-                        <input className="w-24 border rounded px-2 py-1" type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} />
+                        <input className="w-24 border rounded px-2 py-1" type="number" placeholder="₸/час" value={editPrice} onChange={e => setEditPrice(e.target.value)} />
+                        <input className="w-24 border rounded px-2 py-1" type="number" placeholder="Минут" value={editDuration} onChange={e => setEditDuration(e.target.value)} />
                         <button onClick={() => handleSave(t.id)} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">Сохранить</button>
                         <button onClick={() => setEditId(null)} className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Отмена</button>
                       </div>
@@ -208,6 +258,7 @@ function TariffsTab() {
                     <>
                       <td className="px-4 py-3 font-medium">{t.name}</td>
                       <td className="px-4 py-3">{t.price_per_hour} ₸</td>
+                      <td className="px-4 py-3">{t.duration_minutes ? `${t.duration_minutes} мин` : '—'}</td>
                       <td className="px-4 py-3 text-right">
                         <button onClick={() => handleEdit(t)} className="text-blue-500 hover:text-blue-700 mr-3">Изменить</button>
                         <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700">Удалить</button>
