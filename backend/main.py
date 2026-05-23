@@ -355,6 +355,8 @@ def update_tariff(tariff_id: int, data: UpdateTariff):
 
 
 # --- Бонусные акции ---
+from fastapi import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 class CreateBonusPromo(BaseModel):
     name: str
