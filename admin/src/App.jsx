@@ -144,7 +144,7 @@ function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clie
   const tariff = activeSession?.tariff_id ? tariffs.find(t => t.id === activeSession.tariff_id) : null
   const [alert15, setAlert15] = useState(false)
   const [alert5, setAlert5] = useState(false)
-  const notifiedRef = React.useRef({ n15: false, n5: false })
+  const notifiedRef = useRef({ n15: false, n5: false })
 
   const tariffDuration = activeSession?.tariff_duration || tariff?.duration_minutes || null
   const minutesLeft = tariffDuration ? Math.max(0, tariffDuration - activeSession.duration_minutes) : null
