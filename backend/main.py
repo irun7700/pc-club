@@ -354,9 +354,29 @@ def update_tariff(tariff_id: int, data: UpdateTariff):
 
 
 
-# --- Бонусные акции ---
+# --- Авторизация ---
+from auth import hash_password, verify_password, create_token, decode_token
+from database import User
 from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+security = HTTPBearer()
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = decode_token(credentials.credentials)
+        return payload
+    except:
+        raise HTTPException(status_code=401, detail="Неверный токен")
+
+def require_role(*roles):
+    def checker(user=Depends(get_current_user)):
+        if user.get("role") not in roles:
+            raise HTTPException(status_code=403, detail="Нет доступа")
+        return user
+    return checker
+
+# --- Бонусные акции ---
 
 class CreateBonusPromo(BaseModel):
     name: str
@@ -405,28 +425,6 @@ def delete_bonus_promo(promo_id: int, user=Depends(require_role("owner"))):
     db.commit()
     db.close()
     return {"ok": True}
-
-# --- Авторизация ---
-from auth import hash_password, verify_password, create_token, decode_token
-from database import User
-from fastapi import Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
-security = HTTPBearer()
-
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    try:
-        payload = decode_token(credentials.credentials)
-        return payload
-    except:
-        raise HTTPException(status_code=401, detail="Неверный токен")
-
-def require_role(*roles):
-    def checker(user=Depends(get_current_user)):
-        if user.get("role") not in roles:
-            raise HTTPException(status_code=403, detail="Нет доступа")
-        return user
-    return checker
 
 class LoginData(BaseModel):
     username: str
