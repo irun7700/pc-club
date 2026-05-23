@@ -426,7 +426,11 @@ function ClientsTab() {
                 <div className="text-sm text-gray-500">{client.phone || 'Телефон не указан'}</div>
                 {client.birthday && <div className="text-sm text-gray-400">🎂 {new Date(client.birthday).toLocaleDateString('ru-RU')}</div>}
               </div>
-              <div className="text-right"><div className="text-2xl font-bold text-green-600">{client.balance} ₸</div><div className="text-xs text-gray-400">баланс</div></div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-green-600">{client.balance} ₸</div>
+                <div className="text-xs text-gray-400">баланс</div>
+                {client.bonus_balance > 0 && <div className="text-sm font-medium text-purple-600">🎁 {client.bonus_balance} бонусов</div>}
+              </div>
             </div>
             {selectedClient === client.id ? (
               <div className="mt-3 space-y-2">
@@ -580,6 +584,81 @@ function StaffTab() {
   )
 }
 
+function BonusTab() {
+  const [promos, setPromos] = useState([])
+  const [name, setName] = useState('')
+  const [minDeposit, setMinDeposit] = useState('')
+  const [bonusAmount, setBonusAmount] = useState('')
+  const [maxPercent, setMaxPercent] = useState('50')
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
+  const fetchPromos = async () => { const res = await fetch(`${API}/bonus-promos`, { headers }); setPromos(await res.json()) }
+  useEffect(() => { fetchPromos() }, [])
+  const handleCreate = async () => {
+    if (!name || !minDeposit || !bonusAmount) return
+    await fetch(`${API}/bonus-promos`, { method: 'POST', headers, body: JSON.stringify({ name, min_deposit: parseFloat(minDeposit), bonus_amount: parseFloat(bonusAmount), max_bonus_percent: parseFloat(maxPercent) }) })
+    setName(''); setMinDeposit(''); setBonusAmount(''); setMaxPercent('50'); fetchPromos()
+  }
+  const handleToggle = async (id) => {
+    await fetch(`${API}/bonus-promos/${id}/toggle`, { method: 'PUT', headers })
+    fetchPromos()
+  }
+  const handleDelete = async (id) => {
+    if (!confirm('Удалить акцию?')) return
+    await fetch(`${API}/bonus-promos/${id}`, { method: 'DELETE', headers })
+    fetchPromos()
+  }
+  return (
+    <div>
+      <div className="bg-white rounded-xl p-5 shadow-md mb-6">
+        <h2 className="text-lg font-bold mb-4">➕ Новая бонусная акция</h2>
+        <div className="flex gap-3 flex-wrap">
+          <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Название акции" value={name} onChange={e => setName(e.target.value)} />
+          <input className="w-40 border rounded-lg px-3 py-2" placeholder="Мин. пополнение ₸" type="number" value={minDeposit} onChange={e => setMinDeposit(e.target.value)} />
+          <input className="w-40 border rounded-lg px-3 py-2" placeholder="Бонусов ₸" type="number" value={bonusAmount} onChange={e => setBonusAmount(e.target.value)} />
+          <input className="w-36 border rounded-lg px-3 py-2" placeholder="Макс % бонусами" type="number" value={maxPercent} onChange={e => setMaxPercent(e.target.value)} />
+          <button onClick={handleCreate} className="px-5 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600">Создать</button>
+        </div>
+        <p className="text-xs text-gray-400 mt-2">Пример: пополни на 5000₸ → получи 2000₸ бонусов, можно оплатить до 50% бонусами</p>
+      </div>
+      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+        <div className="p-4 border-b font-bold text-gray-700">Бонусные акции</div>
+        {promos.length === 0 ? <p className="text-gray-500 text-center p-6">Нет акций</p> : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-gray-500">
+              <tr>
+                <th className="text-left px-4 py-2">Название</th>
+                <th className="text-left px-4 py-2">Мин. пополнение</th>
+                <th className="text-left px-4 py-2">Бонусов</th>
+                <th className="text-left px-4 py-2">Макс % бонусами</th>
+                <th className="text-left px-4 py-2">Статус</th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {promos.map(p => (
+                <tr key={p.id} className="border-t hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium">{p.name}</td>
+                  <td className="px-4 py-3">{p.min_deposit} ₸</td>
+                  <td className="px-4 py-3 text-purple-600 font-medium">+{p.bonus_amount} ₸</td>
+                  <td className="px-4 py-3">{p.max_bonus_percent}%</td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => handleToggle(p.id)} className={`px-3 py-1 rounded-full text-xs font-medium ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {p.is_active ? '✅ Активна' : '⏸ Отключена'}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button onClick={() => handleDelete(p.id)} className="text-red-500 hover:text-red-700">Удалить</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [user, setUser] = useState(getUser())
   const [tab, setTab] = useState('computers')
@@ -654,6 +733,7 @@ export default function App() {
           <button onClick={() => setTab('cash')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'cash' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>💰 Касса</button>
           {(user.role === 'owner' || user.role === 'manager') && <button onClick={() => setTab('tariffs')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'tariffs' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>⚙️ Тарифы</button>}
           {user.role === 'owner' && <button onClick={() => setTab('staff')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'staff' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>👥 Сотрудники</button>}
+          {user.role === 'owner' && <button onClick={() => setTab('bonus')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'bonus' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>🎁 Бонусы</button>}
         </div>
         {tab === 'computers' && (
           <div>
@@ -667,6 +747,7 @@ export default function App() {
         {tab === 'cash' && <CashTab clients={clients} />}
         {tab === 'tariffs' && <TariffsTab />}
         {tab === 'staff' && <StaffTab />}
+        {tab === 'bonus' && <BonusTab />}
       </div>
     </div>
   )

@@ -42,7 +42,18 @@ class Client(Base):
     name = Column(String, nullable=False)
     phone = Column(String, nullable=True)
     balance = Column(Float, default=0.0)
+    bonus_balance = Column(Float, default=0.0)
     birthday = Column(String, nullable=True)
+
+class BonusPromo(Base):
+    __tablename__ = "bonus_promos"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    min_deposit = Column(Float, nullable=False)   # минимальная сумма пополнения
+    bonus_amount = Column(Float, nullable=False)  # сколько бонусов начислить
+    max_bonus_percent = Column(Float, default=50.0)  # макс % оплаты бонусами
+    is_active = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Session(Base):
     __tablename__ = "sessions"

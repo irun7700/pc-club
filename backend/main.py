@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from database import init_db, SessionLocal, Computer, Session, Tariff, Client, Transaction
+from database import init_db, SessionLocal, Computer, Session, Tariff, Client, Transaction, BonusPromo
 from pydantic import BaseModel
 from typing import Optional
 import datetime
@@ -66,7 +66,7 @@ class Deposit(BaseModel):
 def get_clients():
     db = SessionLocal()
     clients = db.query(Client).all()
-    result = [{"id": c.id, "name": c.name, "phone": c.phone, "balance": c.balance, "birthday": c.birthday} for c in clients]
+    result = [{"id": c.id, "name": c.name, "phone": c.phone, "balance": c.balance, "bonus_balance": c.bonus_balance or 0, "birthday": c.birthday} for c in clients]
     db.close()
     return result
 
@@ -98,10 +98,17 @@ def deposit(client_id: int, data: Deposit):
         card_amount=data.card_amount
     )
     db.add(transaction)
+    # Проверяем активные бонусные акции
+    bonus_earned = 0
+    promos = db.query(BonusPromo).filter(BonusPromo.is_active == 1).all()
+    for promo in promos:
+        if data.amount >= promo.min_deposit:
+            client.bonus_balance += promo.bonus_amount
+            bonus_earned += promo.bonus_amount
     db.commit()
-    result = {"id": client.id, "name": client.name, "balance": client.balance}
+    result = {"id": client.id, "name": client.name, "balance": client.balance, "bonus_balance": client.bonus_balance, "bonus_earned": bonus_earned}
     db.close()
-    logging.info(f"Пополнение баланса клиента {client_id}: {data.amount} ({data.payment_method})")
+    logging.info(f"Пополнение баланса клиента {client_id}: {data.amount} ({data.payment_method}), бонусы: {bonus_earned}")
     return result
 
 # --- Сессии ---
@@ -345,6 +352,57 @@ def update_tariff(tariff_id: int, data: UpdateTariff):
     db.close()
     return result
 
+
+
+# --- Бонусные акции ---
+
+class CreateBonusPromo(BaseModel):
+    name: str
+    min_deposit: float
+    bonus_amount: float
+    max_bonus_percent: float = 50.0
+
+@app.get("/bonus-promos")
+def get_bonus_promos(user=Depends(require_role("owner"))):
+    db = SessionLocal()
+    promos = db.query(BonusPromo).all()
+    result = [{"id": p.id, "name": p.name, "min_deposit": p.min_deposit, "bonus_amount": p.bonus_amount, "max_bonus_percent": p.max_bonus_percent, "is_active": p.is_active} for p in promos]
+    db.close()
+    return result
+
+@app.post("/bonus-promos")
+def create_bonus_promo(data: CreateBonusPromo, user=Depends(require_role("owner"))):
+    db = SessionLocal()
+    promo = BonusPromo(name=data.name, min_deposit=data.min_deposit, bonus_amount=data.bonus_amount, max_bonus_percent=data.max_bonus_percent)
+    db.add(promo)
+    db.commit()
+    result = {"id": promo.id, "name": promo.name, "min_deposit": promo.min_deposit, "bonus_amount": promo.bonus_amount, "max_bonus_percent": promo.max_bonus_percent, "is_active": promo.is_active}
+    db.close()
+    return result
+
+@app.put("/bonus-promos/{promo_id}/toggle")
+def toggle_bonus_promo(promo_id: int, user=Depends(require_role("owner"))):
+    db = SessionLocal()
+    promo = db.query(BonusPromo).filter(BonusPromo.id == promo_id).first()
+    if not promo:
+        db.close()
+        raise HTTPException(status_code=404, detail="Акция не найдена")
+    promo.is_active = 0 if promo.is_active else 1
+    db.commit()
+    db.close()
+    return {"ok": True, "is_active": promo.is_active}
+
+@app.delete("/bonus-promos/{promo_id}")
+def delete_bonus_promo(promo_id: int, user=Depends(require_role("owner"))):
+    db = SessionLocal()
+    promo = db.query(BonusPromo).filter(BonusPromo.id == promo_id).first()
+    if not promo:
+        db.close()
+        raise HTTPException(status_code=404, detail="Акция не найдена")
+    db.delete(promo)
+    db.commit()
+    db.close()
+    return {"ok": True}
 
 # --- Авторизация ---
 from auth import hash_password, verify_password, create_token, decode_token
