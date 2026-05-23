@@ -27,7 +27,7 @@ function AddComputerForm({ headers, onAdded, computersCount }) {
   )
 }
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const API = 'https://pc-club-production.up.railway.app'
 
