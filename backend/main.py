@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from database import init_db, SessionLocal, Computer, Session, Tariff, Client, Transaction, BonusPromo
+from database import init_db, SessionLocal, Computer, Session, Tariff, Client, Transaction, BonusPromo, engine
 from pydantic import BaseModel
 from typing import Optional
 import datetime
@@ -26,6 +26,15 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     init_db()
+    # Миграции
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS bonus_balance FLOAT DEFAULT 0.0"))
+            conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS birthday VARCHAR"))
+            conn.commit()
+    except Exception as e:
+        logging.warning(f"Migration warning: {e}")
     # Автосоздание owner если не существует
     db = SessionLocal()
     from auth import hash_password
