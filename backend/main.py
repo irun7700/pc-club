@@ -301,12 +301,23 @@ def today_report():
     return result
 
 @app.get("/reports/full")
-def full_report():
+def full_report(date_from: str = None, date_to: str = None):
     db = SessionLocal()
+    # Фильтр дат
+    query = db.query(Session).filter(Session.ended_at != None)
+    txn_query = db.query(Transaction)
+    if date_from:
+        dt_from = datetime.datetime.strptime(date_from, "%Y-%m-%d")
+        query = query.filter(Session.started_at >= dt_from)
+        txn_query = txn_query.filter(Transaction.created_at >= dt_from)
+    if date_to:
+        dt_to = datetime.datetime.strptime(date_to, "%Y-%m-%d") + datetime.timedelta(days=1)
+        query = query.filter(Session.started_at < dt_to)
+        txn_query = txn_query.filter(Transaction.created_at < dt_to)
     # Все завершённые сессии
-    sessions = db.query(Session).filter(Session.ended_at != None).all()
+    sessions = query.all()
     # Все транзакции
-    transactions = db.query(Transaction).all()
+    transactions = txn_query.all()
     # Все компьютеры
     computers = db.query(Computer).all()
     # Все тарифы

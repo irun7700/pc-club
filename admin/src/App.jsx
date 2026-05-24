@@ -679,22 +679,46 @@ function BonusTab() {
 function ReportsTab() {
   const [report, setReport] = useState(null)
   const [loading, setLoading] = useState(true)
+  const today = new Date().toISOString().split('T')[0]
+  const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
+  const [dateFrom, setDateFrom] = useState(firstDay)
+  const [dateTo, setDateTo] = useState(today)
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
 
-  useEffect(() => {
-    fetch(`${API}/reports/full`, { headers })
+  const fetchReport = () => {
+    setLoading(true)
+    fetch(`${API}/reports/full?date_from=${dateFrom}&date_to=${dateTo}`, { headers })
       .then(r => r.json())
       .then(data => { setReport(data); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  }
 
-  if (loading) return <div className="text-center py-20 text-gray-500">Загрузка отчёта...</div>
-  if (!report) return <div className="text-center py-20 text-gray-500">Ошибка загрузки</div>
+  useEffect(() => { fetchReport() }, [])
 
   const methodLabel = { cash: '💵 Наличные', card: '💳 Карта', mixed: '🔀 Смешанная' }
 
   return (
     <div className="space-y-6">
+      {/* Фильтр дат */}
+      <div className="bg-white rounded-xl p-4 shadow-md flex gap-3 items-center flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">С:</span>
+          <input type="date" className="border rounded-lg px-3 py-2 text-sm" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">По:</span>
+          <input type="date" className="border rounded-lg px-3 py-2 text-sm" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => { const t = new Date().toISOString().split('T')[0]; setDateFrom(t); setDateTo(t); setTimeout(fetchReport, 100) }} className="px-3 py-2 text-sm bg-gray-100 rounded-lg hover:bg-gray-200">Сегодня</button>
+          <button onClick={() => { const t = new Date(); const m = new Date(t.getFullYear(), t.getMonth(), 1).toISOString().split('T')[0]; setDateFrom(m); setDateTo(t.toISOString().split('T')[0]); setTimeout(fetchReport, 100) }} className="px-3 py-2 text-sm bg-gray-100 rounded-lg hover:bg-gray-200">Месяц</button>
+          <button onClick={() => { setDateFrom('2020-01-01'); setDateTo(new Date().toISOString().split('T')[0]); setTimeout(fetchReport, 100) }} className="px-3 py-2 text-sm bg-gray-100 rounded-lg hover:bg-gray-200">Всё время</button>
+          <button onClick={fetchReport} className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600">Применить</button>
+        </div>
+      </div>
+      {loading && <div className="text-center py-10 text-gray-500">Загрузка...</div>}
+      {!loading && !report && <div className="text-center py-10 text-gray-500">Ошибка загрузки</div>}
+      {!loading && report && <>
       {/* Общая статистика */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-xl p-5 shadow-md text-center">
@@ -793,6 +817,7 @@ function ReportsTab() {
           </tbody>
         </table>
       </div>
+      </>}
     </div>
   )
 }
