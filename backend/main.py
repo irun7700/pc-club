@@ -217,6 +217,9 @@ def get_active_sessions():
     db.close()
     return result
 
+# Словарь подключённых агентов
+connected_agents = {}
+
 @app.websocket("/ws/agent")
 async def agent_websocket(websocket: WebSocket):
     await websocket.accept()
@@ -228,6 +231,7 @@ async def agent_websocket(websocket: WebSocket):
             computer_id = msg.get("computer_id")
             event = msg.get("event")
             if event == "heartbeat" and computer_id:
+                connected_agents[computer_id] = websocket
                 db = SessionLocal()
                 computer = db.query(Computer).filter(Computer.id == computer_id).first()
                 if computer:
@@ -235,8 +239,10 @@ async def agent_websocket(websocket: WebSocket):
                     computer.last_seen = datetime.datetime.utcnow()
                     db.commit()
                 db.close()
-            await websocket.send_text(json.dumps({"status": "ok"}))
+            await websocket.send_text(json.dumps({"event": "heartbeat_ack", "status": "ok"}))
     except WebSocketDisconnect:
+        if computer_id and computer_id in connected_agents:
+            del connected_agents[computer_id]
         if computer_id:
             db = SessionLocal()
             computer = db.query(Computer).filter(Computer.id == computer_id).first()
@@ -244,6 +250,14 @@ async def agent_websocket(websocket: WebSocket):
                 computer.status = "offline"
                 db.commit()
             db.close()
+
+@app.post("/computers/{computer_id}/command")
+async def send_command(computer_id: int, data: dict, user=Depends(require_role("owner", "manager"))):
+    ws = connected_agents.get(computer_id)
+    if not ws:
+        raise HTTPException(status_code=404, detail="ПК не подключён")
+    await ws.send_text(json.dumps({"event": "command", "command": data.get("command")}))
+    return {"ok": True}
 
 async def check_offline():
     while True:

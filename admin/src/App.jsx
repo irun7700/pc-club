@@ -137,7 +137,7 @@ function playBeep(urgent = false) {
   } catch(e) {}
 }
 
-function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clients, tariffs, userRole }) {
+function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clients, tariffs, userRole, headers }) {
   const isOnline = computer.status === 'online'
   const hasSession = activeSession !== null
   const client = activeSession?.client_id ? clients.find(c => c.id === activeSession.client_id) : null
@@ -145,6 +145,16 @@ function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clie
   const [alert15, setAlert15] = useState(false)
   const [alert5, setAlert5] = useState(false)
   const notifiedRef = useRef({ n15: false, n5: false })
+  const [cmdLoading, setCmdLoading] = useState(false)
+
+  const sendCommand = async (command) => {
+    if (!confirm(`Выполнить команду "${command}" на ПК ${computer.name}?`)) return
+    setCmdLoading(true)
+    try {
+      await fetch(`${API}/computers/${computer.id}/command`, { method: 'POST', headers, body: JSON.stringify({ command }) })
+    } catch(e) {}
+    setCmdLoading(false)
+  }
 
   const tariffDuration = activeSession?.tariff_duration || tariff?.duration_minutes || null
   const minutesLeft = tariffDuration ? Math.max(0, tariffDuration - activeSession.duration_minutes) : null
@@ -194,6 +204,13 @@ function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clie
           <button onClick={() => onStop(activeSession.session_id)} className="flex-1 py-2 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600">Стоп</button>
         )}
       </div>
+      {(userRole === 'owner' || userRole === 'manager') && isOnline && (
+        <div className="flex gap-2 mt-2">
+          <button onClick={() => sendCommand('restart')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-lg bg-yellow-500 text-white text-sm font-medium hover:bg-yellow-600 disabled:opacity-40">🔄 Перезагрузить</button>
+          <button onClick={() => sendCommand('shutdown')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-lg bg-gray-600 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-40">⏻ Выключить</button>
+          <button onClick={() => sendCommand('lock')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-lg bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 disabled:opacity-40">🔒 Заблокировать</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -740,7 +757,7 @@ export default function App() {
             {(user.role === 'owner' || user.role === 'manager') && (
               <AddComputerForm headers={headers} onAdded={fetchData} computersCount={computers.length} />
             )}
-            {computers.length === 0 ? <p className="text-gray-500 text-center mt-20">Нет компьютеров...</p> : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{computers.map(computer => <ComputerCard key={computer.id} computer={computer} onStart={handleStart} onStop={handleStop} onDelete={handleDeleteComputer} activeSession={sessions.find(s => s.computer_id === computer.id) || null} clients={clients} tariffs={tariffs} userRole={user.role} />)}</div>}
+            {computers.length === 0 ? <p className="text-gray-500 text-center mt-20">Нет компьютеров...</p> : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{computers.map(computer => <ComputerCard key={computer.id} computer={computer} onStart={handleStart} onStop={handleStop} onDelete={handleDeleteComputer} activeSession={sessions.find(s => s.computer_id === computer.id) || null} clients={clients} tariffs={tariffs} userRole={user.role} headers={headers} />)}</div>}
           </div>
         )}
         {tab === 'clients' && <ClientsTab />}
