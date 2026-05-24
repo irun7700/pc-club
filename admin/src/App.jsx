@@ -959,7 +959,12 @@ export default function App() {
 
   const handleStart = (computer) => setStartModal(computer)
   const handleConfirmStart = async (clientId, tariffId) => {
-    await fetch(`${API}/sessions/start`, { method: 'POST', headers, body: JSON.stringify({ computer_id: startModal.id, tariff_id: tariffId, client_id: clientId }) })
+    const res = await fetch(`${API}/sessions/start`, { method: 'POST', headers, body: JSON.stringify({ computer_id: startModal.id, tariff_id: tariffId, client_id: clientId }) })
+    if (!res.ok) {
+      const err = await res.json()
+      alert(`Ошибка: ${err.detail}`)
+      return
+    }
     setStartModal(null); fetchData()
   }
   const handleStop = async (sessionId) => {
