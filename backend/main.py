@@ -269,6 +269,27 @@ async def check_offline():
             if computer.last_seen and (now - computer.last_seen).seconds > 15:
                 computer.status = "offline"
         db.commit()
+
+        # Автозавершение сессий по истечении времени тарифа
+        active_sessions = db.query(Session).filter(Session.ended_at == None).all()
+        for s in active_sessions:
+            tariff = db.query(Tariff).filter(Tariff.id == s.tariff_id).first()
+            if tariff and tariff.duration_minutes:
+                elapsed = (now - s.started_at).seconds / 60
+                if elapsed >= tariff.duration_minutes:
+                    duration = (now - s.started_at).seconds / 3600
+                    total = round(duration * (tariff.price_per_hour or 0), 2)
+                    if tariff.total_price:
+                        total = tariff.total_price
+                    s.ended_at = now
+                    s.total_amount = total
+                    if s.client_id:
+                        client = db.query(Client).filter(Client.id == s.client_id).first()
+                        if client:
+                            client.balance -= total
+                            db.add(Transaction(client_id=s.client_id, amount=-total, type="session"))
+                    logging.info(f"Автозавершение сессии {s.id} на ПК {s.computer_id}")
+        db.commit()
         db.close()
 
 
