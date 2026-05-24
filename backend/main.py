@@ -252,7 +252,7 @@ async def agent_websocket(websocket: WebSocket):
             db.close()
 
 @app.post("/computers/{computer_id}/command")
-async def send_command(computer_id: int, data: dict, user=Depends(require_role("owner", "manager"))):
+async def send_command(computer_id: int, data: dict):
     ws = connected_agents.get(computer_id)
     if not ws:
         raise HTTPException(status_code=404, detail="ПК не подключён")
