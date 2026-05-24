@@ -148,6 +148,22 @@ def start_session(data: StartSession):
     if not tariff:
         db.close()
         raise HTTPException(status_code=404, detail="Тариф не найден")
+    # Проверка баланса клиента
+    if data.client_id:
+        client = db.query(Client).filter(Client.id == data.client_id).first()
+        if client:
+            if tariff.total_price and client.balance < tariff.total_price:
+                db.close()
+                raise HTTPException(status_code=400, detail=f"Недостаточно средств. Баланс: {client.balance} ₸, нужно: {tariff.total_price} ₸")
+            elif tariff.type == "hourly" and tariff.price_per_hour and client.balance < tariff.price_per_hour / 60:
+                db.close()
+                raise HTTPException(status_code=400, detail=f"Недостаточно средств. Баланс: {client.balance} ₸")
+    # Проверка временного тарифа
+    if tariff.type == "timed" and tariff.start_time and tariff.end_time:
+        now_time = datetime.datetime.utcnow().strftime("%H:%M")
+        if not (tariff.start_time <= now_time <= tariff.end_time):
+            db.close()
+            raise HTTPException(status_code=400, detail=f"Тариф доступен только с {tariff.start_time} до {tariff.end_time}")
     session = Session(
         computer_id=data.computer_id,
         tariff_id=data.tariff_id,
