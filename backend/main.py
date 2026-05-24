@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db, SessionLocal, Computer, Session, Tariff, Client, Transaction, BonusPromo, engine
 from pydantic import BaseModel
@@ -301,7 +301,7 @@ def today_report():
     return result
 
 @app.get("/reports/full")
-def full_report(user=Depends(require_role("owner", "manager"))):
+def full_report():
     db = SessionLocal()
     # Все завершённые сессии
     sessions = db.query(Session).filter(Session.ended_at != None).all()
@@ -449,7 +449,6 @@ def update_tariff(tariff_id: int, data: UpdateTariff):
 # --- Авторизация ---
 from auth import hash_password, verify_password, create_token, decode_token
 from database import User
-from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 security = HTTPBearer()

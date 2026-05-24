@@ -872,6 +872,7 @@ export default function App() {
           {(user.role === 'owner' || user.role === 'manager') && <button onClick={() => setTab('tariffs')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'tariffs' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>⚙️ Тарифы</button>}
           {user.role === 'owner' && <button onClick={() => setTab('staff')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'staff' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>👥 Сотрудники</button>}
           {user.role === 'owner' && <button onClick={() => setTab('bonus')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'bonus' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>🎁 Бонусы</button>}
+          {(user.role === 'owner' || user.role === 'manager') && <button onClick={() => setTab('reports')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'reports' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>📊 Отчёты</button>}
         </div>
         {tab === 'computers' && (
           <div>
@@ -886,6 +887,7 @@ export default function App() {
         {tab === 'tariffs' && <TariffsTab />}
         {tab === 'staff' && <StaffTab />}
         {tab === 'bonus' && <BonusTab />}
+        {tab === 'reports' && <ReportsTab />}
       </div>
     </div>
   )
