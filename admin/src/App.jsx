@@ -822,9 +822,104 @@ function ReportsTab() {
   )
 }
 
+function DashboardTab({ sessions, computers, clients, headers }) {
+  const [todayReport, setTodayReport] = useState(null)
+
+  useEffect(() => {
+    fetch(`${API}/reports/today`, { headers })
+      .then(r => r.json())
+      .then(data => setTodayReport(data))
+  }, [])
+
+  const onlineComputers = computers.filter(c => c.status === 'online').length
+  const activeSessions = sessions.length
+  const freeComputers = onlineComputers - activeSessions
+
+  return (
+    <div className="space-y-6">
+      {/* Статус клуба */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl p-5 shadow-md text-center border-l-4 border-green-400">
+          <div className="text-3xl font-bold text-green-600">{onlineComputers}</div>
+          <div className="text-sm text-gray-500 mt-1">ПК онлайн</div>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-md text-center border-l-4 border-blue-400">
+          <div className="text-3xl font-bold text-blue-600">{activeSessions}</div>
+          <div className="text-sm text-gray-500 mt-1">Активных сессий</div>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-md text-center border-l-4 border-yellow-400">
+          <div className="text-3xl font-bold text-yellow-600">{freeComputers}</div>
+          <div className="text-sm text-gray-500 mt-1">Свободных ПК</div>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-md text-center border-l-4 border-purple-400">
+          <div className="text-3xl font-bold text-purple-600">{clients.length}</div>
+          <div className="text-sm text-gray-500 mt-1">Клиентов</div>
+        </div>
+      </div>
+
+      {/* Выручка сегодня */}
+      {todayReport && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl p-5 shadow-md">
+            <div className="text-sm text-gray-500 mb-1">💰 Выручка сегодня</div>
+            <div className="text-3xl font-bold text-green-600">{todayReport.total_amount} ₸</div>
+            <div className="text-sm text-gray-400 mt-1">{todayReport.sessions_count} сессий</div>
+          </div>
+          <div className="bg-white rounded-xl p-5 shadow-md">
+            <div className="text-sm text-gray-500 mb-1">🖥️ Загрузка</div>
+            <div className="text-3xl font-bold text-blue-600">{onlineComputers > 0 ? Math.round(activeSessions / onlineComputers * 100) : 0}%</div>
+            <div className="text-sm text-gray-400 mt-1">{activeSessions} из {onlineComputers} ПК заняты</div>
+          </div>
+        </div>
+      )}
+
+      {/* Активные сессии */}
+      <div className="bg-white rounded-xl p-5 shadow-md">
+        <h2 className="text-lg font-bold mb-4">⚡ Активные сессии</h2>
+        {sessions.length === 0 ? (
+          <p className="text-gray-400 text-center py-4">Нет активных сессий</p>
+        ) : (
+          <div className="space-y-2">
+            {sessions.map(s => {
+              const computer = computers.find(c => c.id === s.computer_id)
+              const client = clients.find(c => c.id === s.client_id)
+              return (
+                <div key={s.session_id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <span className="font-medium">{computer?.name || `ПК ${s.computer_id}`}</span>
+                    {client && <span className="text-sm text-gray-500 ml-2">· {client.name}</span>}
+                  </div>
+                  <div className="text-sm text-blue-600 font-medium">⏱ {Math.round(s.duration_minutes)} мин</div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Топ клиентов по балансу */}
+      <div className="bg-white rounded-xl p-5 shadow-md">
+        <h2 className="text-lg font-bold mb-4">👥 Клиенты с балансом</h2>
+        {clients.filter(c => c.balance > 0).length === 0 ? (
+          <p className="text-gray-400 text-center py-4">Нет клиентов с балансом</p>
+        ) : (
+          <div className="space-y-2">
+            {clients.filter(c => c.balance > 0).sort((a, b) => b.balance - a.balance).slice(0, 5).map(c => (
+              <div key={c.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span className="font-medium">{c.name}</span>
+                <span className="text-green-600 font-bold">{c.balance} ₸</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [user, setUser] = useState(getUser())
-  const [tab, setTab] = useState('computers')
+  const [tab, setTab] = useState('dashboard')
   const [computers, setComputers] = useState([])
   const [sessions, setSessions] = useState([])
   const [clients, setClients] = useState([])
@@ -891,6 +986,7 @@ export default function App() {
           </div>
         </div>
         <div className="flex gap-2 mb-6 flex-wrap">
+          <button onClick={() => setTab('dashboard')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'dashboard' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>🏠 Дашборд</button>
           <button onClick={() => setTab('computers')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'computers' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>🖥 Компьютеры</button>
           <button onClick={() => setTab('clients')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'clients' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>👤 Клиенты</button>
           <button onClick={() => setTab('cash')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'cash' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>💰 Касса</button>
@@ -899,6 +995,7 @@ export default function App() {
           {user.role === 'owner' && <button onClick={() => setTab('bonus')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'bonus' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>🎁 Бонусы</button>}
           {(user.role === 'owner' || user.role === 'manager') && <button onClick={() => setTab('reports')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'reports' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>📊 Отчёты</button>}
         </div>
+        {tab === 'dashboard' && <DashboardTab sessions={sessions} computers={computers} clients={clients} headers={headers} />}
         {tab === 'computers' && (
           <div>
             {(user.role === 'owner' || user.role === 'manager') && (
