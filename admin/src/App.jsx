@@ -29,7 +29,7 @@ function AddComputerForm({ headers, onAdded, computersCount }) {
 
 import { useState, useEffect, useRef } from 'react'
 
-const API = 'https://pc-club-production.up.railway.app'
+const API = window.location.hostname === 'localhost' ? 'http://localhost:8000' : 'https://pc-club-production.up.railway.app'
 
 function getToken() { return localStorage.getItem('token') }
 function getUser() { try { return JSON.parse(localStorage.getItem('user')) } catch { return null } }
@@ -208,7 +208,7 @@ function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clie
         <div className="flex gap-2 mt-2">
           <button onClick={() => sendCommand('restart')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-lg bg-yellow-500 text-white text-sm font-medium hover:bg-yellow-600 disabled:opacity-40">🔄 Перезагрузить</button>
           <button onClick={() => sendCommand('shutdown')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-lg bg-gray-600 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-40">⏻ Выключить</button>
-          <button onClick={() => sendCommand('lock')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-lg bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 disabled:opacity-40">🔒 Заблокировать</button>
+          <button onClick={() => sendCommand('wakeup')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-lg bg-green-500 text-white text-sm font-medium hover:bg-green-600 disabled:opacity-40">⚡ Включить</button>
         </div>
       )}
     </div>

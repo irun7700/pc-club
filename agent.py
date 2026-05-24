@@ -32,11 +32,11 @@ def execute_command(command):
             else:
                 subprocess.run(["sudo", "shutdown", "-r", "now"], check=True)
             logging.info(f"Выполнена команда: {command}")
-        elif command == "lock":
+        elif command == "wakeup":
             if system == "Windows":
-                subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"], check=True)
+                subprocess.run(["powercfg", "/requests"], check=True)
             elif system == "Darwin":
-                subprocess.run(["pmset", "displaysleepnow"], check=True)
+                subprocess.run(["caffeinate", "-u", "-t", "1"], check=True)
             logging.info(f"Выполнена команда: {command}")
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Команда выполнена: {command}")
     except Exception as e:
