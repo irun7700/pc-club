@@ -676,6 +676,127 @@ function BonusTab() {
   )
 }
 
+function ReportsTab() {
+  const [report, setReport] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
+
+  useEffect(() => {
+    fetch(`${API}/reports/full`, { headers })
+      .then(r => r.json())
+      .then(data => { setReport(data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div className="text-center py-20 text-gray-500">Загрузка отчёта...</div>
+  if (!report) return <div className="text-center py-20 text-gray-500">Ошибка загрузки</div>
+
+  const methodLabel = { cash: '💵 Наличные', card: '💳 Карта', mixed: '🔀 Смешанная' }
+
+  return (
+    <div className="space-y-6">
+      {/* Общая статистика */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl p-5 shadow-md text-center">
+          <div className="text-3xl font-bold text-green-600">{report.total_revenue} ₸</div>
+          <div className="text-sm text-gray-500 mt-1">Общая выручка</div>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-md text-center">
+          <div className="text-3xl font-bold text-blue-600">{report.total_sessions}</div>
+          <div className="text-sm text-gray-500 mt-1">Всего сессий</div>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-md text-center">
+          <div className="text-3xl font-bold text-purple-600">{report.total_clients}</div>
+          <div className="text-sm text-gray-500 mt-1">Клиентов</div>
+        </div>
+      </div>
+
+      {/* Выручка по дням */}
+      <div className="bg-white rounded-xl p-5 shadow-md">
+        <h2 className="text-lg font-bold mb-4">📈 Выручка по дням</h2>
+        {report.revenue_by_day.length === 0 ? <p className="text-gray-400 text-center py-4">Нет данных</p> : (
+          <div className="space-y-2">
+            {report.revenue_by_day.slice(-14).reverse().map(d => (
+              <div key={d.date} className="flex items-center gap-3">
+                <div className="text-sm text-gray-500 w-24">{d.date}</div>
+                <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+                  <div className="bg-green-400 h-5 rounded-full" style={{width: `${Math.min(100, (d.revenue / Math.max(...report.revenue_by_day.map(x => x.revenue))) * 100)}%`}}></div>
+                </div>
+                <div className="text-sm font-medium w-24 text-right">{d.revenue} ₸</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Способы оплаты */}
+      <div className="bg-white rounded-xl p-5 shadow-md">
+        <h2 className="text-lg font-bold mb-4">💳 Способы оплаты</h2>
+        <div className="grid grid-cols-3 gap-4">
+          {Object.entries(report.payment_methods).map(([method, amount]) => (
+            <div key={method} className="text-center p-3 bg-gray-50 rounded-lg">
+              <div className="text-xl font-bold">{amount} ₸</div>
+              <div className="text-sm text-gray-500">{methodLabel[method]}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Популярные тарифы */}
+      <div className="bg-white rounded-xl p-5 shadow-md">
+        <h2 className="text-lg font-bold mb-4">🏆 Популярные тарифы</h2>
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-gray-500"><tr><th className="text-left px-4 py-2">Тариф</th><th className="text-left px-4 py-2">Сессий</th><th className="text-left px-4 py-2">Выручка</th></tr></thead>
+          <tbody>
+            {report.popular_tariffs.filter(t => t.count > 0).map(t => (
+              <tr key={t.id} className="border-t hover:bg-gray-50">
+                <td className="px-4 py-3 font-medium">{t.name}</td>
+                <td className="px-4 py-3">{t.count}</td>
+                <td className="px-4 py-3 text-green-600 font-medium">{t.revenue} ₸</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Выручка по ПК */}
+      <div className="bg-white rounded-xl p-5 shadow-md">
+        <h2 className="text-lg font-bold mb-4">🖥️ Выручка по ПК</h2>
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-gray-500"><tr><th className="text-left px-4 py-2">ПК</th><th className="text-left px-4 py-2">Сессий</th><th className="text-left px-4 py-2">Часов</th><th className="text-left px-4 py-2">Выручка</th></tr></thead>
+          <tbody>
+            {report.pc_revenue.map(pc => (
+              <tr key={pc.id} className="border-t hover:bg-gray-50">
+                <td className="px-4 py-3 font-medium">{pc.name}</td>
+                <td className="px-4 py-3">{pc.sessions}</td>
+                <td className="px-4 py-3">{pc.hours} ч</td>
+                <td className="px-4 py-3 text-green-600 font-medium">{pc.revenue} ₸</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Активные клиенты */}
+      <div className="bg-white rounded-xl p-5 shadow-md">
+        <h2 className="text-lg font-bold mb-4">👥 Топ клиентов</h2>
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-gray-500"><tr><th className="text-left px-4 py-2">Клиент</th><th className="text-left px-4 py-2">Сессий</th><th className="text-left px-4 py-2">Потрачено</th></tr></thead>
+          <tbody>
+            {report.active_clients.map(c => (
+              <tr key={c.id} className="border-t hover:bg-gray-50">
+                <td className="px-4 py-3 font-medium">{c.name}</td>
+                <td className="px-4 py-3">{c.sessions}</td>
+                <td className="px-4 py-3 text-green-600 font-medium">{c.total_spent} ₸</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [user, setUser] = useState(getUser())
   const [tab, setTab] = useState('computers')

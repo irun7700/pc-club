@@ -300,6 +300,75 @@ def today_report():
     db.close()
     return result
 
+@app.get("/reports/full")
+def full_report(user=Depends(require_role("owner", "manager"))):
+    db = SessionLocal()
+    # Все завершённые сессии
+    sessions = db.query(Session).filter(Session.ended_at != None).all()
+    # Все транзакции
+    transactions = db.query(Transaction).all()
+    # Все компьютеры
+    computers = db.query(Computer).all()
+    # Все тарифы
+    tariffs = db.query(Tariff).all()
+    # Все клиенты
+    clients = db.query(Client).all()
+    # Все пользователи (сотрудники)
+    users = db.query(User).all()
+
+    # Выручка по дням
+    revenue_by_day = {}
+    for s in sessions:
+        day = str(s.started_at.date())
+        revenue_by_day[day] = round(revenue_by_day.get(day, 0) + (s.total_amount or 0), 2)
+
+    # Популярные тарифы
+    tariff_usage = {}
+    for s in sessions:
+        tariff_usage[s.tariff_id] = tariff_usage.get(s.tariff_id, 0) + 1
+    popular_tariffs = []
+    for t in tariffs:
+        popular_tariffs.append({"id": t.id, "name": t.name, "count": tariff_usage.get(t.id, 0), "revenue": round(sum(s.total_amount or 0 for s in sessions if s.tariff_id == t.id), 2)})
+    popular_tariffs.sort(key=lambda x: x["count"], reverse=True)
+
+    # Способы оплаты
+    payment_methods = {"cash": 0, "card": 0, "mixed": 0}
+    for t in transactions:
+        if t.type == "deposit" and t.payment_method:
+            payment_methods[t.payment_method] = round(payment_methods.get(t.payment_method, 0) + t.amount, 2)
+
+    # Активные клиенты (имеют хотя бы одну сессию)
+    active_client_ids = set(s.client_id for s in sessions if s.client_id)
+    active_clients = [{"id": c.id, "name": c.name, "sessions": len([s for s in sessions if s.client_id == c.id]), "total_spent": round(sum(s.total_amount or 0 for s in sessions if s.client_id == c.id), 2)} for c in clients if c.id in active_client_ids]
+    active_clients.sort(key=lambda x: x["total_spent"], reverse=True)
+
+    # Загрузка баланса по сотрудникам
+    staff_deposits = []
+    for u in users:
+        user_txns = [t for t in transactions if t.type == "deposit"]
+        staff_deposits.append({"id": u.id, "username": u.username, "role": u.role, "total_deposits": round(sum(t.amount for t in user_txns), 2)})
+
+    # Выручка по ПК
+    pc_revenue = []
+    for c in computers:
+        pc_sessions = [s for s in sessions if s.computer_id == c.id]
+        pc_revenue.append({"id": c.id, "name": c.name, "sessions": len(pc_sessions), "revenue": round(sum(s.total_amount or 0 for s in pc_sessions), 2), "hours": round(sum((s.ended_at - s.started_at).seconds / 3600 for s in pc_sessions), 1)})
+    pc_revenue.sort(key=lambda x: x["revenue"], reverse=True)
+
+    result = {
+        "total_revenue": round(sum(s.total_amount or 0 for s in sessions), 2),
+        "total_sessions": len(sessions),
+        "total_clients": len(clients),
+        "revenue_by_day": [{"date": k, "revenue": v} for k, v in sorted(revenue_by_day.items())],
+        "popular_tariffs": popular_tariffs,
+        "payment_methods": payment_methods,
+        "active_clients": active_clients[:10],
+        "staff_deposits": staff_deposits,
+        "pc_revenue": pc_revenue
+    }
+    db.close()
+    return result
+
 
 def tariff_to_dict(t):
     return {
