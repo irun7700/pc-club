@@ -157,8 +157,8 @@ function StartModal({ computer, clients, tariffs, onConfirm, onCancel }) {
                   type="number"
                   min="0"
                   max={maxBonuses}
-                  value={bonusAmount}
-                  onChange={e => setBonusAmount(Math.min(parseFloat(e.target.value) || 0, maxBonuses))}
+                  value={bonusAmount || ''}
+                  onChange={e => setBonusAmount(e.target.value === '' ? 0 : Math.min(parseFloat(e.target.value) || 0, maxBonuses))}
                 />
                 {bonusAmount > 0 && (
                   <div className="text-xs text-green-600 mt-1">
