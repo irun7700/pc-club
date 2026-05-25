@@ -93,25 +93,85 @@ function LoginPage({ onLogin }) {
 function StartModal({ computer, clients, tariffs, onConfirm, onCancel }) {
   const [clientId, setClientId] = useState('')
   const [tariffId, setTariffId] = useState(tariffs[0]?.id || '')
+  const [useBonuses, setUseBonuses] = useState(false)
+  const [bonusAmount, setBonusAmount] = useState(0)
+  const [promos, setPromos] = useState([])
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
+
+  useEffect(() => {
+    fetch(`${API}/bonus-promos`, { headers })
+      .then(r => r.json())
+      .then(data => Array.isArray(data) ? setPromos(data) : setPromos([]))
+      .catch(() => setPromos([]))
+  }, [])
+
+  const selectedClient = clientId ? clients.find(c => c.id === parseInt(clientId)) : null
+  const selectedTariff = tariffId ? tariffs.find(t => t.id === parseInt(tariffId)) : null
+  const tariffPrice = selectedTariff ? (selectedTariff.total_price || selectedTariff.price_per_hour || 0) : 0
+
+  // Максимальный процент оплаты бонусами из активных акций
+  const activePromos = promos.filter(p => p.is_active)
+  const maxBonusPercent = activePromos.length > 0 ? Math.max(...activePromos.map(p => p.max_bonus_percent)) : 50
+  const maxBonusByPercent = Math.floor(tariffPrice * maxBonusPercent / 100)
+  const maxBonuses = selectedClient ? Math.min(selectedClient.bonus_balance || 0, maxBonusByPercent) : 0
+
+  const handleConfirm = () => {
+    const clientIdNum = clientId ? parseInt(clientId) : null
+    const tariffIdNum = parseInt(tariffId)
+    const bonusAmountNum = useBonuses ? parseFloat(bonusAmount) : 0
+    onConfirm(clientIdNum, tariffIdNum, bonusAmountNum)
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 shadow-xl w-96">
         <h2 className="text-xl font-bold mb-4">Старт сессии — {computer.name}</h2>
         <div className="mb-4">
           <label className="block text-sm text-gray-600 mb-2">Тариф</label>
-          <select className="w-full border rounded-lg px-3 py-2" value={tariffId} onChange={e => setTariffId(e.target.value)}>
-            {tariffs.map(t => (<option key={t.id} value={t.id}>{t.name} — {t.price_per_hour} ₸/час</option>))}
+          <select className="w-full border rounded-lg px-3 py-2" value={tariffId} onChange={e => { setTariffId(e.target.value); setUseBonuses(false); setBonusAmount(0) }}>
+            {tariffs.map(t => (<option key={t.id} value={t.id}>{t.name} — {t.price_per_hour || t.total_price} ₸</option>))}
           </select>
         </div>
         <div className="mb-4">
           <label className="block text-sm text-gray-600 mb-2">Клиент (необязательно)</label>
-          <select className="w-full border rounded-lg px-3 py-2" value={clientId} onChange={e => setClientId(e.target.value)}>
+          <select className="w-full border rounded-lg px-3 py-2" value={clientId} onChange={e => { setClientId(e.target.value); setUseBonuses(false); setBonusAmount(0) }}>
             <option value="">— Без клиента —</option>
-            {clients.map(c => (<option key={c.id} value={c.id}>{c.name} — {c.balance} ₸</option>))}
+            {clients.map(c => (<option key={c.id} value={c.id}>{c.name} — {c.balance} ₸ {c.bonus_balance > 0 ? `(🎁 ${c.bonus_balance} бонусов)` : ''}</option>))}
           </select>
         </div>
+
+        {selectedClient && selectedClient.bonus_balance > 0 && tariffPrice > 0 && (
+          <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+              <input type="checkbox" checked={useBonuses} onChange={e => { setUseBonuses(e.target.checked); if (!e.target.checked) setBonusAmount(0) }} />
+              🎁 Использовать бонусы
+            </label>
+            <div className="text-xs text-gray-500 mb-2">
+              Доступно бонусов: <strong>{selectedClient.bonus_balance} ₸</strong> · Можно потратить до <strong>{maxBonusPercent}%</strong> от суммы = <strong>{maxBonusByPercent} ₸</strong>
+            </div>
+            {useBonuses && (
+              <>
+                <input
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  placeholder={`Введите сумму (макс: ${maxBonuses} ₸)`}
+                  type="number"
+                  min="0"
+                  max={maxBonuses}
+                  value={bonusAmount}
+                  onChange={e => setBonusAmount(Math.min(parseFloat(e.target.value) || 0, maxBonuses))}
+                />
+                {bonusAmount > 0 && (
+                  <div className="text-xs text-green-600 mt-1">
+                    Итого к оплате: <strong>{Math.max(0, tariffPrice - bonusAmount)} ₸</strong> (бонусами: {bonusAmount} ₸)
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-3">
-          <button onClick={() => onConfirm(clientId ? parseInt(clientId) : null, parseInt(tariffId))} className="flex-1 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium">Начать</button>
+          <button onClick={handleConfirm} className="flex-1 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium">Начать</button>
           <button onClick={onCancel} className="flex-1 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 font-medium">Отмена</button>
         </div>
       </div>
@@ -958,8 +1018,8 @@ export default function App() {
   }
 
   const handleStart = (computer) => setStartModal(computer)
-  const handleConfirmStart = async (clientId, tariffId) => {
-    const res = await fetch(`${API}/sessions/start`, { method: 'POST', headers, body: JSON.stringify({ computer_id: startModal.id, tariff_id: tariffId, client_id: clientId }) })
+  const handleConfirmStart = async (clientId, tariffId, bonusAmount = 0) => {
+    const res = await fetch(`${API}/sessions/start`, { method: 'POST', headers, body: JSON.stringify({ computer_id: startModal.id, tariff_id: tariffId, client_id: clientId, bonus_amount: bonusAmount }) })
     if (!res.ok) {
       const err = await res.json()
       alert(`Ошибка: ${err.detail}`)
