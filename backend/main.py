@@ -542,7 +542,8 @@ def get_bonus_promos(user=Depends(require_role("owner"))):
 @app.post("/bonus-promos")
 def create_bonus_promo(data: CreateBonusPromo, user=Depends(require_role("owner"))):
     db = SessionLocal()
-    promo = BonusPromo(name=data.name, min_deposit=data.min_deposit, bonus_amount=data.bonus_amount, max_bonus_percent=data.max_bonus_percent)
+    # Новая акция создаётся неактивной
+    promo = BonusPromo(name=data.name, min_deposit=data.min_deposit, bonus_amount=data.bonus_amount, max_bonus_percent=data.max_bonus_percent, is_active=0)
     db.add(promo)
     db.commit()
     result = {"id": promo.id, "name": promo.name, "min_deposit": promo.min_deposit, "bonus_amount": promo.bonus_amount, "max_bonus_percent": promo.max_bonus_percent, "is_active": promo.is_active}
@@ -556,6 +557,9 @@ def toggle_bonus_promo(promo_id: int, user=Depends(require_role("owner"))):
     if not promo:
         db.close()
         raise HTTPException(status_code=404, detail="Акция не найдена")
+    if not promo.is_active:
+        # Отключаем все остальные акции
+        db.query(BonusPromo).filter(BonusPromo.id != promo_id).update({"is_active": 0})
     promo.is_active = 0 if promo.is_active else 1
     db.commit()
     db.close()
