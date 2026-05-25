@@ -162,7 +162,7 @@ function StartModal({ computer, clients, tariffs, onConfirm, onCancel }) {
                 />
                 {bonusAmount > 0 && (
                   <div className="text-xs text-green-600 mt-1">
-                    Итого к оплате: <strong>{Math.max(0, tariffPrice - bonusAmount)} ₸</strong> (бонусами: {bonusAmount} ₸)
+                    Итого к оплате: <strong>{Math.max(0, tariffPrice - parseFloat(bonusAmount || 0))} ₸</strong> · Бонусами: <strong>{parseFloat(bonusAmount || 0)} ₸</strong>
                   </div>
                 )}
               </>
