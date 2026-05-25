@@ -126,6 +126,7 @@ class StartSession(BaseModel):
     computer_id: int
     tariff_id: int
     client_id: Optional[int] = None
+    bonus_amount: float = 0
 
 class StopSession(BaseModel):
     session_id: int
@@ -152,12 +153,19 @@ def start_session(data: StartSession):
     if data.client_id:
         client = db.query(Client).filter(Client.id == data.client_id).first()
         if client:
-            if tariff.total_price and client.balance < tariff.total_price:
+            # Списываем бонусы если указаны
+            if data.bonus_amount > 0:
+                if client.bonus_balance and client.bonus_balance >= data.bonus_amount:
+                    client.bonus_balance -= data.bonus_amount
+                else:
+                    db.close()
+                    raise HTTPException(status_code=400, detail=f"Недостаточно бонусов. Доступно: {client.bonus_balance or 0}")
+            
+            # Проверяем остаток деньгами
+            remaining = (tariff.total_price or tariff.price_per_hour or 0) - data.bonus_amount
+            if remaining > 0 and client.balance < remaining:
                 db.close()
-                raise HTTPException(status_code=400, detail=f"Недостаточно средств. Баланс: {client.balance} ₸, нужно: {tariff.total_price} ₸")
-            elif tariff.type == "hourly" and tariff.price_per_hour and client.balance < tariff.price_per_hour / 60:
-                db.close()
-                raise HTTPException(status_code=400, detail=f"Недостаточно средств. Баланс: {client.balance} ₸")
+                raise HTTPException(status_code=400, detail=f"Недостаточно средств. Баланс: {client.balance} ₸, нужно: {remaining} ₸")
     # Проверка временного тарифа
     if tariff.type == "timed" and tariff.start_time and tariff.end_time:
         now_time = datetime.datetime.utcnow().strftime("%H:%M")
@@ -552,6 +560,22 @@ def toggle_bonus_promo(promo_id: int, user=Depends(require_role("owner"))):
     db.commit()
     db.close()
     return {"ok": True, "is_active": promo.is_active}
+
+@app.put("/bonus-promos/{promo_id}")
+def update_bonus_promo(promo_id: int, data: CreateBonusPromo, user=Depends(require_role("owner"))):
+    db = SessionLocal()
+    promo = db.query(BonusPromo).filter(BonusPromo.id == promo_id).first()
+    if not promo:
+        db.close()
+        raise HTTPException(status_code=404, detail="Акция не найдена")
+    promo.name = data.name
+    promo.min_deposit = data.min_deposit
+    promo.bonus_amount = data.bonus_amount
+    promo.max_bonus_percent = data.max_bonus_percent
+    db.commit()
+    result = {"id": promo.id, "name": promo.name, "min_deposit": promo.min_deposit, "bonus_amount": promo.bonus_amount, "max_bonus_percent": promo.max_bonus_percent, "is_active": promo.is_active}
+    db.close()
+    return result
 
 @app.delete("/bonus-promos/{promo_id}")
 def delete_bonus_promo(promo_id: int, user=Depends(require_role("owner"))):

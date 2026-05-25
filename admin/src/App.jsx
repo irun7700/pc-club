@@ -675,9 +675,20 @@ function BonusTab() {
     await fetch(`${API}/bonus-promos`, { method: 'POST', headers, body: JSON.stringify({ name, min_deposit: parseFloat(minDeposit), bonus_amount: parseFloat(bonusAmount), max_bonus_percent: parseFloat(maxPercent) }) })
     setName(''); setMinDeposit(''); setBonusAmount(''); setMaxPercent('50'); fetchPromos()
   }
+  const [editId, setEditId] = useState(null)
+  const [editData, setEditData] = useState({})
+
   const handleToggle = async (id) => {
     await fetch(`${API}/bonus-promos/${id}/toggle`, { method: 'PUT', headers })
     fetchPromos()
+  }
+  const handleEdit = (p) => {
+    setEditId(p.id)
+    setEditData({ name: p.name, min_deposit: p.min_deposit, bonus_amount: p.bonus_amount, max_bonus_percent: p.max_bonus_percent })
+  }
+  const handleSaveEdit = async (id) => {
+    await fetch(`${API}/bonus-promos/${id}`, { method: 'PUT', headers, body: JSON.stringify({ name: editData.name, min_deposit: parseFloat(editData.min_deposit), bonus_amount: parseFloat(editData.bonus_amount), max_bonus_percent: parseFloat(editData.max_bonus_percent) }) })
+    setEditId(null); fetchPromos()
   }
   const handleDelete = async (id) => {
     if (!confirm('Удалить акцию?')) return
@@ -715,17 +726,33 @@ function BonusTab() {
               {promos.map(p => (
                 <tr key={p.id} className="border-t hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium">{p.name}</td>
-                  <td className="px-4 py-3">{p.min_deposit} ₸</td>
-                  <td className="px-4 py-3 text-purple-600 font-medium">+{p.bonus_amount} ₸</td>
-                  <td className="px-4 py-3">{p.max_bonus_percent}%</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => handleToggle(p.id)} className={`px-3 py-1 rounded-full text-xs font-medium ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {p.is_active ? '✅ Активна' : '⏸ Отключена'}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => handleDelete(p.id)} className="text-red-500 hover:text-red-700">Удалить</button>
-                  </td>
+                  {editId === p.id ? (
+                    <>
+                      <td className="px-4 py-2"><input className="border rounded px-2 py-1 w-24" type="number" value={editData.min_deposit} onChange={e => setEditData({...editData, min_deposit: e.target.value})} /></td>
+                      <td className="px-4 py-2"><input className="border rounded px-2 py-1 w-24" type="number" value={editData.bonus_amount} onChange={e => setEditData({...editData, bonus_amount: e.target.value})} /></td>
+                      <td className="px-4 py-2"><input className="border rounded px-2 py-1 w-16" type="number" value={editData.max_bonus_percent} onChange={e => setEditData({...editData, max_bonus_percent: e.target.value})} /></td>
+                      <td className="px-4 py-2"></td>
+                      <td className="px-4 py-2 text-right">
+                        <button onClick={() => handleSaveEdit(p.id)} className="text-green-600 hover:text-green-800 mr-2">Сохранить</button>
+                        <button onClick={() => setEditId(null)} className="text-gray-400 hover:text-gray-600">Отмена</button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-4 py-3">{p.min_deposit} ₸</td>
+                      <td className="px-4 py-3 text-purple-600 font-medium">+{p.bonus_amount} ₸</td>
+                      <td className="px-4 py-3">{p.max_bonus_percent}%</td>
+                      <td className="px-4 py-3">
+                        <button onClick={() => handleToggle(p.id)} className={`px-3 py-1 rounded-full text-xs font-medium ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {p.is_active ? '✅ Активна' : '⏸ Отключена'}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button onClick={() => handleEdit(p)} className="text-blue-500 hover:text-blue-700 mr-3">Изменить</button>
+                        <button onClick={() => handleDelete(p.id)} className="text-red-500 hover:text-red-700">Удалить</button>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>
