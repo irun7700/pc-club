@@ -40,6 +40,10 @@ async def startup():
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS bonus_balance FLOAT DEFAULT 0.0"))
             conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS birthday VARCHAR"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sessions_computer_id ON sessions(computer_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sessions_ended_at ON sessions(ended_at)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sessions_client_id ON sessions(client_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_transactions_client_id ON transactions(client_id)"))
             conn.commit()
     except Exception as e:
         logging.warning(f"Migration warning: {e}")
