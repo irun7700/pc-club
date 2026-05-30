@@ -1,4 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Request
+from pydantic import validator
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db, SessionLocal, Computer, Session, Tariff, Client, Transaction, BonusPromo, engine
 from pydantic import BaseModel
@@ -76,6 +77,12 @@ class CreateClient(BaseModel):
     name: str
     phone: Optional[str] = None
     birthday: Optional[str] = None
+
+    @validator("name")
+    def name_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Имя не может быть пустым")
+        return v.strip()
 
 class Deposit(BaseModel):
     amount: float
@@ -450,6 +457,12 @@ class CreateTariff(BaseModel):
     duration_minutes: int = None
     start_time: str = None
     end_time: str = None
+
+    @validator("price_per_hour", "total_price", pre=True, always=True)
+    def price_must_be_positive(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Цена не может быть отрицательной")
+        return v
 
 @app.get("/tariffs")
 def get_tariffs():
