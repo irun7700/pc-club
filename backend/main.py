@@ -287,13 +287,7 @@ async def agent_websocket(websocket: WebSocket):
                 db.commit()
             db.close()
 
-@app.post("/computers/{computer_id}/command")
-async def send_command(computer_id: int, data: dict, user=Depends(require_role("owner", "manager"))):
-    ws = connected_agents.get(computer_id)
-    if not ws:
-        raise HTTPException(status_code=404, detail="ПК не подключён")
-    await ws.send_text(json.dumps({"event": "command", "command": data.get("command")}))
-    return {"ok": True}
+
 
 async def check_offline():
     while True:
@@ -534,6 +528,14 @@ def require_role(*roles):
             raise HTTPException(status_code=403, detail="Нет доступа")
         return user
     return checker
+
+@app.post("/computers/{computer_id}/command")
+async def send_command(computer_id: int, data: dict, user=Depends(require_role("owner", "manager"))):
+    ws = connected_agents.get(computer_id)
+    if not ws:
+        raise HTTPException(status_code=404, detail="ПК не подключён")
+    await ws.send_text(json.dumps({"event": "command", "command": data.get("command")}))
+    return {"ok": True}
 
 # --- Бонусные акции ---
 
