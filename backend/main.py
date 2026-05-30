@@ -316,7 +316,10 @@ async def check_offline():
                     if s.client_id:
                         client = db.query(Client).filter(Client.id == s.client_id).first()
                         if client:
+                            if client.balance < total:
+                                total = client.balance
                             client.balance -= total
+                            client.balance = round(max(client.balance, 0), 2)
                             db.add(Transaction(client_id=s.client_id, amount=-total, type="session"))
                     logging.info(f"Автозавершение сессии {s.id} на ПК {s.computer_id}")
         db.commit()
