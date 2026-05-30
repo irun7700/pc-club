@@ -7,6 +7,7 @@ import datetime
 import asyncio
 import json
 import logging
+import os
 
 logging.basicConfig(
     filename="backend.log",
@@ -40,7 +41,7 @@ async def startup():
     from auth import hash_password
     existing = db.query(User).filter(User.role == "owner").first()
     if not existing:
-        u = User(username="owner", password_hash=hash_password("owner123"), role="owner")
+        u = User(username="owner", password_hash=hash_password(os.getenv("OWNER_PASSWORD", "owner123")), role="owner")
         db.add(u)
         db.commit()
     db.close()
@@ -665,7 +666,7 @@ def init_owner():
         return {"message": "Владелец уже существует"}
     owner = User(
         username="owner",
-        password_hash=hash_password("owner123"),
+        password_hash=hash_password(os.getenv("OWNER_PASSWORD", "owner123")),
         role="owner"
     )
     db.add(owner)
@@ -735,7 +736,7 @@ def update_user(user_id: int, data: UpdateUser, user=Depends(require_role("owner
     result = {"id": u.id, "username": u.username, "role": u.role}
     db.close()
     return result
-    u = User(username="owner", password_hash=hash_password("owner123"), role="owner")
+    u = User(username="owner", password_hash=hash_password(os.getenv("OWNER_PASSWORD", "owner123")), role="owner")
     db.add(u)
     db.commit()
     db.close()
