@@ -84,9 +84,9 @@ class Deposit(BaseModel):
     card_amount: float = None
 
 @app.get("/clients")
-def get_clients():
+def get_clients(limit: int = 100, offset: int = 0):
     db = SessionLocal()
-    clients = db.query(Client).all()
+    clients = db.query(Client).offset(offset).limit(limit).all()
     result = [{"id": c.id, "name": c.name, "phone": c.phone, "balance": c.balance, "bonus_balance": c.bonus_balance or 0, "birthday": c.birthday} for c in clients]
     db.close()
     return result
