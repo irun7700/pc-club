@@ -10,8 +10,11 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s"
 )
 
-COMPUTER_ID = 1
-SERVER_URL = "ws://localhost:8000/ws/agent"
+import sys
+import os
+
+COMPUTER_ID = int(os.getenv("COMPUTER_ID", sys.argv[1] if len(sys.argv) > 1 else "1"))
+SERVER_URL = os.getenv("SERVER_URL", "ws://localhost:8000/ws/agent")
 HEARTBEAT_INTERVAL = 5
 
 import subprocess
