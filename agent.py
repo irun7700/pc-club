@@ -15,6 +15,7 @@ import os
 
 COMPUTER_ID = int(os.getenv("COMPUTER_ID", sys.argv[1] if len(sys.argv) > 1 else "1"))
 SERVER_URL = os.getenv("SERVER_URL", "ws://localhost:8000/ws/agent")
+AGENT_TOKEN = os.getenv("AGENT_TOKEN", "")
 HEARTBEAT_INTERVAL = 5
 
 import subprocess
@@ -58,7 +59,7 @@ async def connect():
                 logging.info("Подключён к серверу")
                 async def heartbeat():
                     while True:
-                        msg = {"computer_id": COMPUTER_ID, "event": "heartbeat"}
+                        msg = {"computer_id": COMPUTER_ID, "event": "heartbeat", "token": AGENT_TOKEN}
                         await ws.send(json.dumps(msg))
                         await asyncio.sleep(HEARTBEAT_INTERVAL)
                 async def listen():

@@ -264,13 +264,26 @@ def get_active_sessions():
 connected_agents = {}
 
 @app.websocket("/ws/agent")
-async def agent_websocket(websocket: WebSocket):
+async def agent_websocket(websocket: WebSocket, token: str = None):
     await websocket.accept()
     computer_id = None
     try:
         while True:
             data = await websocket.receive_text()
             msg = json.loads(data)
+            # Проверка токена при первом сообщении
+            if not token:
+                token = msg.get("token")
+                if not token:
+                    await websocket.send_text(json.dumps({"error": "token required"}))
+                    await websocket.close()
+                    return
+                try:
+                    decode_token(token)
+                except:
+                    await websocket.send_text(json.dumps({"error": "invalid token"}))
+                    await websocket.close()
+                    return
             computer_id = msg.get("computer_id")
             event = msg.get("event")
             if event == "heartbeat" and computer_id:
