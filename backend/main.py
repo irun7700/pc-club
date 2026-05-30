@@ -687,37 +687,10 @@ def delete_user(user_id: int, user=Depends(require_role("owner"))):
     return {"ok": True}
 
 
-@app.post("/init")
-def init_owner():
-    db = SessionLocal()
-    existing = db.query(User).filter(User.username == "owner").first()
-    if existing:
-        db.close()
-        return {"message": "Владелец уже существует"}
-    owner = User(
-        username="owner",
-        password_hash=hash_password(os.getenv("OWNER_PASSWORD", "owner123")),
-        role="owner"
-    )
-    db.add(owner)
-    db.commit()
-    db.close()
-    return {"message": "Владелец создан!", "username": "owner", "password": "owner123"}
 
 
-@app.post("/init/computers")
-def init_computers():
-    db = SessionLocal()
-    count = db.query(Computer).count()
-    if count > 0:
-        db.close()
-        return {"message": f"Уже есть {count} ПК"}
-    for i in range(1, 36):
-        computer = Computer(name=f"ПК-{i}", number=i, status="offline")
-        db.add(computer)
-    db.commit()
-    db.close()
-    return {"message": "Добавлено 35 ПК!"}
+
+
 
 
 class CreateComputer(BaseModel):
