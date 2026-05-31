@@ -346,6 +346,18 @@ async def check_offline():
         db.close()
 
 
+@app.get("/clients/{client_id}/transactions")
+def get_client_transactions(client_id: int, user=Depends(get_current_user)):
+    db = SessionLocal()
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        db.close()
+        raise HTTPException(status_code=404, detail="Клиент не найден")
+    txns = db.query(Transaction).filter(Transaction.client_id == client_id).order_by(Transaction.created_at.desc()).limit(20).all()
+    result = [{"id": t.id, "amount": t.amount, "type": t.type, "payment_method": t.payment_method, "created_at": str(t.created_at)} for t in txns]
+    db.close()
+    return result
+
 @app.get("/reports/today")
 def today_report():
     db = SessionLocal()
