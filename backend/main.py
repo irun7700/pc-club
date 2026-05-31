@@ -45,6 +45,7 @@ async def startup():
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sessions_ended_at ON sessions(ended_at)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sessions_client_id ON sessions(client_id)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_transactions_client_id ON transactions(client_id)"))
+            conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS is_blocked INTEGER DEFAULT 0"))
             conn.commit()
     except Exception as e:
         logging.warning(f"Migration warning: {e}")
@@ -94,7 +95,7 @@ class Deposit(BaseModel):
 def get_clients(limit: int = 100, offset: int = 0):
     db = SessionLocal()
     clients = db.query(Client).offset(offset).limit(limit).all()
-    result = [{"id": c.id, "name": c.name, "phone": c.phone, "balance": c.balance, "bonus_balance": c.bonus_balance or 0, "birthday": c.birthday} for c in clients]
+    result = [{"id": c.id, "name": c.name, "phone": c.phone, "balance": c.balance, "bonus_balance": c.bonus_balance or 0, "birthday": c.birthday, "is_blocked": c.is_blocked or 0} for c in clients]
     db.close()
     return result
 
@@ -587,6 +588,18 @@ def get_client_transactions(client_id: int, user=Depends(get_current_user)):
     result = [{"id": t.id, "amount": t.amount, "type": t.type, "payment_method": t.payment_method, "created_at": str(t.created_at)} for t in txns]
     db.close()
     return result
+
+@app.put("/clients/{client_id}/block")
+def toggle_block_client(client_id: int, user=Depends(require_role("owner", "manager"))):
+    db = SessionLocal()
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        db.close()
+        raise HTTPException(status_code=404, detail="Клиент не найден")
+    client.is_blocked = 0 if client.is_blocked else 1
+    db.commit()
+    db.close()
+    return {"ok": True, "is_blocked": client.is_blocked}
 
 @app.get("/bonus-promos")
 def get_bonus_promos(user=Depends(require_role("owner"))):
