@@ -44,6 +44,7 @@ class Client(Base):
     balance = Column(Float, default=0.0)
     bonus_balance = Column(Float, default=0.0)
     birthday = Column(String, nullable=True)
+    is_blocked = Column(Integer, default=0)
 
 class BonusPromo(Base):
     __tablename__ = "bonus_promos"
