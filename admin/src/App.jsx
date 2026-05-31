@@ -31,6 +31,25 @@ import { useState, useEffect, useRef } from 'react'
 
 const API = window.location.hostname === 'localhost' ? 'http://localhost:8000' : 'https://pc-club-production.up.railway.app'
 
+function Toast({ message, type = 'success' }) {
+  if (!message) return null
+  const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' }
+  return (
+    <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-xl text-white font-medium shadow-lg ${colors[type]} transition-all`}>
+      {type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : 'ℹ️ '}{message}
+    </div>
+  )
+}
+
+function useToast() {
+  const [toast, setToast] = useState(null)
+  const show = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+  return [toast, show]
+}
+
 function getToken() { return localStorage.getItem('token') }
 function getUser() { try { return JSON.parse(localStorage.getItem('user')) } catch { return null } }
 
@@ -442,10 +461,12 @@ function ClientsTab() {
   const phoneDigits = phone.replace(/\D/g, '')
   const phoneValid = phoneDigits.length === 11
 
+  const [toast, showToast] = useToast()
   const handleCreate = async () => {
     if (!name || !phoneValid) return
-    await fetch(`${API}/clients`, { method: 'POST', headers, body: JSON.stringify({ name, phone }) })
-    setName(''); setPhone('+7'); fetchClients()
+    const res = await fetch(`${API}/clients`, { method: 'POST', headers, body: JSON.stringify({ name, phone }) })
+    if (res.ok) { showToast(`Клиент ${name} создан!`); setName(''); setPhone('+7'); fetchClients() }
+    else showToast('Ошибка создания клиента', 'error')
   }
 
   const filteredClients = search.length >= 2
@@ -467,10 +488,12 @@ function ClientsTab() {
       await fetch(`${API}/clients/${clientId}/deposit`, { method: 'POST', headers, body: JSON.stringify({ amount: parseFloat(depositAmount), payment_method: depositMethod }) })
     }
     setDepositAmount(''); setCashAmount(''); setCardAmount(''); setSelectedClient(null); fetchClients()
+    showToast('Баланс пополнен!')
   }
   const methodLabel = { cash: '💵 Наличные', card: '💳 Карта', mixed: '🔀 Смешанная' }
   return (
     <div>
+      <Toast message={toast?.message} type={toast?.type} />
       <div className="bg-white rounded-xl p-5 shadow-md mb-6">
         <h2 className="text-lg font-bold mb-4">➕ Новый клиент</h2>
         <div className="flex gap-3">
@@ -1054,10 +1077,11 @@ export default function App() {
     }
     setStartModal(null); fetchData()
   }
+  const [toast, showToast] = useToast()
   const handleStop = async (sessionId) => {
     const res = await fetch(`${API}/sessions/stop`, { method: 'POST', headers, body: JSON.stringify({ session_id: sessionId }) })
     const data = await res.json()
-    alert(`Сессия завершена!\nВремя: ${data.duration_minutes} мин\nСумма: ${data.total_amount} ₸`)
+    showToast(`Сессия завершена! ${data.duration_minutes} мин · ${data.total_amount} ₸`, 'info')
     fetchData()
   }
 
@@ -1068,6 +1092,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       {startModal && <StartModal computer={startModal} clients={clients} tariffs={tariffs} onConfirm={handleConfirmStart} onCancel={() => setStartModal(null)} />}
+      <Toast message={toast?.message} type={toast?.type} />
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">🖥 PC Club Admin</h1>
