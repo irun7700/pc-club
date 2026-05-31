@@ -445,8 +445,11 @@ function ClientHistory({ clientId, headers }) {
                 <span>{typeLabel[t.type] || t.type}</span>
                 {t.payment_method && <span className="text-xs text-gray-400 ml-1">· {methodLabel[t.payment_method]}</span>}
               </div>
-              <div className={`font-medium ${t.amount > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                {t.amount > 0 ? '+' : ''}{t.amount} ₸
+              <div className="text-right">
+                <div className={`font-medium ${t.amount > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                  {t.amount > 0 ? '+' : ''}{t.amount} ₸
+                </div>
+                <div className="text-xs text-gray-400">{t.created_at ? new Date(t.created_at).toLocaleString('ru-RU') : ''}</div>
               </div>
             </div>
           ))}
