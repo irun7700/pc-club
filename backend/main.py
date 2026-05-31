@@ -95,7 +95,7 @@ class Deposit(BaseModel):
 def get_clients(limit: int = 100, offset: int = 0):
     db = SessionLocal()
     clients = db.query(Client).offset(offset).limit(limit).all()
-    result = [{"id": c.id, "name": c.name, "phone": c.phone, "balance": c.balance, "bonus_balance": c.bonus_balance or 0, "birthday": c.birthday, "is_blocked": c.is_blocked or 0} for c in clients]
+    result = [{"id": c.id, "name": c.name, "phone": c.phone, "balance": c.balance, "bonus_balance": c.bonus_balance or 0, "birthday": c.birthday, "is_blocked": getattr(c, "is_blocked", 0) or 0} for c in clients]
     db.close()
     return result
 
