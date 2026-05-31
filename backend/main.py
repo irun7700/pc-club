@@ -47,6 +47,7 @@ async def startup():
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sessions_client_id ON sessions(client_id)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_transactions_client_id ON transactions(client_id)"))
             conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS is_blocked INTEGER DEFAULT 0"))
+            conn.execute(text("UPDATE clients SET is_blocked = 0 WHERE is_blocked IS NULL"))
             conn.commit()
     except Exception as e:
         logging.warning(f"Migration warning: {e}")
