@@ -28,8 +28,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://pc-club-production.up.railway.app", "https://lavish-abundance-production-537b.up.railway.app", "http://localhost:5173"],
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 @app.on_event("startup")
