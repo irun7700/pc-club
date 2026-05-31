@@ -175,6 +175,9 @@ def start_session(data: StartSession):
     if data.client_id:
         client = db.query(Client).filter(Client.id == data.client_id).first()
         if client:
+            if client.is_blocked:
+                db.close()
+                raise HTTPException(status_code=400, detail="Клиент заблокирован")
             # Списываем бонусы если указаны
             if data.bonus_amount > 0:
                 if client.bonus_balance and client.bonus_balance >= data.bonus_amount:
