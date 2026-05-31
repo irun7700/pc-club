@@ -498,6 +498,13 @@ function ClientsTab() {
   const phoneValid = phoneDigits.length === 11
 
   const [historyClient, setHistoryClient] = useState(null)
+  const handleBlock = async (clientId, isBlocked) => {
+    const action = isBlocked ? 'разблокировать' : 'заблокировать'
+    if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} клиента?`)) return
+    await fetch(`${API}/clients/${clientId}/block`, { method: 'PUT', headers })
+    showToast(isBlocked ? 'Клиент разблокирован' : 'Клиент заблокирован', isBlocked ? 'success' : 'error')
+    fetchClients()
+  }
   const [toast, showToast] = useToast()
   const handleCreate = async () => {
     if (!name || !phoneValid) return
@@ -556,10 +563,10 @@ function ClientsTab() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {filteredClients.map(client => (
-          <div key={client.id} className="bg-white rounded-xl p-5 shadow-md border border-gray-200">
+          <div key={client.id} className={`bg-white rounded-xl p-5 shadow-md border ${client.is_blocked ? "border-red-300 bg-red-50" : "border-gray-200"}`}>
             <div className="flex justify-between items-center mb-2">
               <div>
-                <div className="font-bold text-lg">{client.name}</div>
+                <div className="font-bold text-lg">{client.name} {client.is_blocked ? <span className="text-xs text-red-500 font-normal ml-1">🔒 Заблокирован</span> : null}</div>
                 <div className="text-sm text-gray-500">{client.phone || 'Телефон не указан'}</div>
                 {client.birthday && <div className="text-sm text-gray-400">🎂 {new Date(client.birthday).toLocaleDateString('ru-RU')}</div>}
               </div>
@@ -596,6 +603,7 @@ function ClientsTab() {
                 <div className="flex gap-2 mt-3">
                   <button onClick={() => setSelectedClient(client.id)} className="flex-1 py-2 bg-green-50 text-green-700 border border-green-300 rounded-lg hover:bg-green-100">+ Пополнить</button>
                   <button onClick={() => setHistoryClient(historyClient === client.id ? null : client.id)} className="px-4 py-2 bg-gray-50 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100">📋 История</button>
+                  <button onClick={() => handleBlock(client.id, client.is_blocked)} className={`px-4 py-2 rounded-lg border text-sm font-medium ${client.is_blocked ? 'bg-red-50 text-red-600 border-red-300 hover:bg-red-100' : 'bg-gray-50 text-gray-500 border-gray-300 hover:bg-gray-100'}`}>{client.is_blocked ? '🔒 Разблокировать' : '🔒 Заблокировать'}</button>
                 </div>
                 {historyClient === client.id && (
                   <ClientHistory clientId={client.id} headers={headers} />
