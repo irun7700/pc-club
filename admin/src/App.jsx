@@ -423,6 +423,39 @@ function TariffsTab() {
   )
 }
 
+function ClientHistory({ clientId, headers }) {
+  const [txns, setTxns] = useState([])
+  useEffect(() => {
+    fetch(`${API}/clients/${clientId}/transactions`, { headers })
+      .then(r => r.json())
+      .then(data => Array.isArray(data) ? setTxns(data) : setTxns([]))
+  }, [clientId])
+
+  const typeLabel = { deposit: '💰 Пополнение', session: '🖥 Сессия' }
+  const methodLabel = { cash: 'Нал', card: 'Карта', mixed: 'Смешанная' }
+
+  return (
+    <div className="mt-3 border-t pt-3">
+      <div className="text-sm font-medium text-gray-600 mb-2">История транзакций:</div>
+      {txns.length === 0 ? <p className="text-xs text-gray-400">Нет транзакций</p> : (
+        <div className="space-y-1">
+          {txns.map(t => (
+            <div key={t.id} className="flex justify-between items-center text-sm py-1 border-b border-gray-100">
+              <div>
+                <span>{typeLabel[t.type] || t.type}</span>
+                {t.payment_method && <span className="text-xs text-gray-400 ml-1">· {methodLabel[t.payment_method]}</span>}
+              </div>
+              <div className={`font-medium ${t.amount > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                {t.amount > 0 ? '+' : ''}{t.amount} ₸
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ClientsTab() {
   const [clients, setClients] = useState([])
   const [name, setName] = useState('')
@@ -461,6 +494,7 @@ function ClientsTab() {
   const phoneDigits = phone.replace(/\D/g, '')
   const phoneValid = phoneDigits.length === 11
 
+  const [historyClient, setHistoryClient] = useState(null)
   const [toast, showToast] = useToast()
   const handleCreate = async () => {
     if (!name || !phoneValid) return
@@ -555,7 +589,15 @@ function ClientsTab() {
                 </div>
               </div>
             ) : (
-              <button onClick={() => setSelectedClient(client.id)} className="mt-3 w-full py-2 bg-green-50 text-green-700 border border-green-300 rounded-lg hover:bg-green-100">+ Пополнить баланс</button>
+              <>
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => setSelectedClient(client.id)} className="flex-1 py-2 bg-green-50 text-green-700 border border-green-300 rounded-lg hover:bg-green-100">+ Пополнить</button>
+                  <button onClick={() => setHistoryClient(historyClient === client.id ? null : client.id)} className="px-4 py-2 bg-gray-50 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100">📋 История</button>
+                </div>
+                {historyClient === client.id && (
+                  <ClientHistory clientId={client.id} headers={headers} />
+                )}
+              </>
             )}
           </div>
         ))}
