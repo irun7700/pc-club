@@ -24,7 +24,9 @@ class StopSession(BaseModel):
 def start_session(data: StartSession):
     db = SessionLocal()
     try:
-        computer = db.query(Computer).filter(Computer.id == data.computer_id).first()
+        computer = db.query(Computer).filter(
+    Computer.id == data.computer_id
+).with_for_update().first()
         if not computer:
             raise HTTPException(status_code=404, detail="ПК не найден")
 
@@ -40,7 +42,9 @@ def start_session(data: StartSession):
             raise HTTPException(status_code=404, detail="Тариф не найден")
 
         if data.client_id:
-            client = db.query(Client).filter(Client.id == data.client_id).first()
+            client = db.query(Client).filter(
+    Client.id == data.client_id
+).first()
             if client:
                 if client.is_blocked:
                     raise HTTPException(status_code=400, detail="Клиент заблокирован")
@@ -86,9 +90,9 @@ def stop_session(data: StopSession):
     db = SessionLocal()
     try:
         session = db.query(Session).filter(
-            Session.id == data.session_id,
-            Session.ended_at == None,
-        ).first()
+    Session.id == data.session_id,
+    Session.ended_at == None,
+).with_for_update().first()
         if not session:
             raise HTTPException(status_code=404, detail="Активная сессия не найдена")
 
