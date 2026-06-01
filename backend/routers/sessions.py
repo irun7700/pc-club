@@ -33,7 +33,7 @@ def start_session(data: StartSession):
         active = db.query(Session).filter(
             Session.computer_id == data.computer_id,
             Session.ended_at == None,
-        ).first()
+        ).with_for_update().first()
         if active:
             raise HTTPException(status_code=400, detail="На этом ПК уже идёт сессия")
 
