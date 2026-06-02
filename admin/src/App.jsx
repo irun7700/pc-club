@@ -669,7 +669,7 @@ function StaffTab() {
   const [editPassword, setEditPassword] = useState('')
   const [editUsername, setEditUsername] = useState('')
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
-  const fetchUsers = async () => { const res = await fetch(`${API}/users`, { headers }); setUsers(await res.json()) }
+  const fetchUsers = async () => { const res = await fetch(`${API}/users`, { headers }); const data = await res.json(); setUsers(Array.isArray(data) ? data : []) }
   useEffect(() => { fetchUsers() }, [])
   const handleCreate = async () => {
     if (!username || !password) return
@@ -744,7 +744,7 @@ function BonusTab() {
   const [bonusAmount, setBonusAmount] = useState('')
   const [maxPercent, setMaxPercent] = useState('50')
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
-  const fetchPromos = async () => { const res = await fetch(`${API}/bonus-promos`, { headers }); setPromos(await res.json()) }
+  const fetchPromos = async () => { const res = await fetch(`${API}/bonus-promos`, { headers }); const data = await res.json(); setPromos(Array.isArray(data) ? data : []) }
   useEffect(() => { fetchPromos() }, [])
   const handleCreate = async () => {
     if (!name || !minDeposit || !bonusAmount) return
