@@ -144,3 +144,37 @@ def get_active_sessions():
         return result
     finally:
         db.close()
+
+
+@router.get("")
+def get_sessions(limit: int = 50, offset: int = 0):
+    db = SessionLocal()
+    try:
+        total = db.query(Session).count()
+        sessions = (
+            db.query(Session)
+            .order_by(Session.started_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        return {
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "sessions": [
+                {
+                    "session_id": s.id,
+                    "computer_id": s.computer_id,
+                    "tariff_id": s.tariff_id,
+                    "client_id": s.client_id,
+                    "started_at": str(s.started_at),
+                    "ended_at": str(s.ended_at) if s.ended_at else None,
+                    "total_amount": s.total_amount,
+                    "duration_minutes": round((s.ended_at - s.started_at).seconds / 60, 1) if s.ended_at else None,
+                }
+                for s in sessions
+            ],
+        }
+    finally:
+        db.close()
