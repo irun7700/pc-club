@@ -89,3 +89,12 @@ class User(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, nullable=True)
+    username = Column(String, nullable=True)
+    action = Column(String)
+    details = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)

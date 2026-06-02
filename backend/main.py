@@ -10,10 +10,10 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
-from database import init_db, SessionLocal, engine, User
+from database import init_db, SessionLocal, engine, User, AuditLog
 from auth import hash_password
 from core.websocket import agent_websocket, check_offline
-from routers import clients, sessions, computers, tariffs, reports, users, bonus
+from routers import clients, sessions, computers, tariffs, reports, users, bonus, audit
 
 logging.basicConfig(
     filename="backend.log",
@@ -90,6 +90,7 @@ app.include_router(tariffs.router)
 app.include_router(reports.router)
 app.include_router(users.router)
 app.include_router(bonus.router)
+app.include_router(audit.router)
 
 app.add_api_websocket_route("/ws/agent", agent_websocket)
 

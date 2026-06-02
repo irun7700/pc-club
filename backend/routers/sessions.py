@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from database import SessionLocal, Computer, Session, Tariff, Client, Transaction
+from core.audit import log_action
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -80,6 +81,7 @@ def start_session(data: StartSession):
         db.add(session)
         db.commit()
         logging.info(f"Сессия {session.id} начата на ПК {data.computer_id}")
+        log_action(None, "start_session", f"session_id={session.id} computer_id={data.computer_id} tariff_id={data.tariff_id}")
         return {"session_id": session.id, "started_at": str(session.started_at)}
     finally:
         db.close()
@@ -111,6 +113,7 @@ def stop_session(data: StopSession):
 
         db.commit()
         logging.info(f"Сессия {session.id} завершена, сумма: {total}")
+        log_action(None, "stop_session", f"session_id={session.id} total={total}")
         return {
             "session_id": session.id,
             "duration_minutes": round(duration * 60, 1),

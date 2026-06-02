@@ -5,6 +5,7 @@ from typing import Optional
 
 from database import SessionLocal, Client, Transaction, BonusPromo
 from core.deps import get_current_user, require_role
+from core.audit import log_action
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
@@ -53,6 +54,7 @@ def create_client(data: CreateClient):
         db.add(client)
         db.commit()
         logging.info(f"Клиент создан: {client.name}")
+        log_action(None, "create_client", f"name={client.name} phone={client.phone}")
         return {"id": client.id, "name": client.name, "phone": client.phone, "balance": client.balance, "birthday": client.birthday}
     finally:
         db.close()
@@ -86,6 +88,7 @@ def deposit(client_id: int, data: Deposit):
 
         db.commit()
         logging.info(f"Пополнение клиента {client_id}: {data.amount} ({data.payment_method}), бонусы: {bonus_earned}")
+        log_action(None, "deposit", f"client_id={client_id} amount={data.amount} method={data.payment_method}")
         return {
             "id": client.id, "name": client.name,
             "balance": client.balance, "bonus_balance": client.bonus_balance,
