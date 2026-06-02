@@ -856,7 +856,7 @@ function ReportsTab() {
       .catch(() => setLoading(false))
   }
 
-  useEffect(() => { fetchReport() }, [])
+  useEffect(() => { fetchReport(); const i = setInterval(fetchReport, 30000); return () => clearInterval(i) }, [])
 
   const methodLabel = { cash: '💵 Наличные', card: '💳 Карта', mixed: '🔀 Смешанная' }
 
