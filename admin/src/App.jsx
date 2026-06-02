@@ -68,7 +68,7 @@ function LoginPage({ onLogin }) {
       })
       if (!res.ok) { setError('Неверный логин или пароль'); return }
       const data = await res.json()
-      localStorage.setItem('token', data.token)
+      // token stored in httpOnly cookie
       localStorage.setItem('user', JSON.stringify({ username: data.username, role: data.role }))
       onLogin(data)
     } catch (e) {
@@ -118,7 +118,7 @@ function StartModal({ computer, clients, tariffs, onConfirm, onCancel }) {
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
 
   useEffect(() => {
-    fetch(`${API}/bonus-promos`, { headers })
+    fetch(`${API}/bonus-promos`, { headers, credentials: 'include' })
       .then(r => r.json())
       .then(data => Array.isArray(data) ? setPromos(data) : setPromos([]))
       .catch(() => setPromos([]))
@@ -230,7 +230,7 @@ function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clie
     if (!confirm(`Выполнить команду "${command}" на ПК ${computer.name}?`)) return
     setCmdLoading(true)
     try {
-      await fetch(`${API}/computers/${computer.id}/command`, { method: 'POST', headers, body: JSON.stringify({ command }) })
+      await fetch(`${API}/computers/${computer.id}/command`, { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ command }) })
     } catch(e) {}
     setCmdLoading(false)
   }
@@ -321,7 +321,7 @@ function TariffsTab() {
   const [editId, setEditId] = useState(null)
   const [edit, setEdit] = useState({})
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
-  const fetchTariffs = async () => { const res = await fetch(`${API}/tariffs`, { headers }); setTariffs(await res.json()) }
+  const fetchTariffs = async () => { const res = await fetch(`${API}/tariffs`, { headers, credentials: 'include' }); setTariffs(await res.json()) }
   useEffect(() => { fetchTariffs() }, [])
 
   const buildBody = (t, e) => {
@@ -333,13 +333,13 @@ function TariffsTab() {
   const handleCreate = async () => {
     if (!name) return
     const body = buildBody(type, { name, pricePerHour, totalPrice, duration, startTime, endTime })
-    await fetch(`${API}/tariffs`, { method: 'POST', headers, body: JSON.stringify(body) })
+    await fetch(`${API}/tariffs`, { method: 'POST', headers, credentials: 'include', body: JSON.stringify(body) })
     setName(''); setPricePerHour(''); setTotalPrice(''); setDuration(''); setStartTime(''); setEndTime('')
     fetchTariffs()
   }
   const handleDelete = async (id) => {
     if (!confirm('Удалить тариф?')) return
-    await fetch(`${API}/tariffs/${id}`, { method: 'DELETE', headers })
+    await fetch(`${API}/tariffs/${id}`, { method: 'DELETE', headers, credentials: 'include' })
     fetchTariffs()
   }
   const handleEdit = (t) => {
@@ -348,7 +348,7 @@ function TariffsTab() {
   }
   const handleSave = async (id) => {
     const body = buildBody(edit.type, edit)
-    await fetch(`${API}/tariffs/${id}`, { method: 'PUT', headers, body: JSON.stringify(body) })
+    await fetch(`${API}/tariffs/${id}`, { method: 'PUT', headers, credentials: 'include', body: JSON.stringify(body) })
     setEditId(null); fetchTariffs()
   }
 
@@ -426,7 +426,7 @@ function TariffsTab() {
 function ClientHistory({ clientId, headers }) {
   const [txns, setTxns] = useState([])
   useEffect(() => {
-    fetch(`${API}/clients/${clientId}/transactions`, { headers })
+    fetch(`${API}/clients/${clientId}/transactions`, { headers, credentials: 'include' })
       .then(r => r.json())
       .then(data => Array.isArray(data) ? setTxns(data) : setTxns([]))
   }, [clientId])
@@ -470,7 +470,7 @@ function ClientsTab() {
   const [cardAmount, setCardAmount] = useState('')
   const [selectedClient, setSelectedClient] = useState(null)
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
-  const fetchClients = async () => { const res = await fetch(`${API}/clients`, { headers }); setClients(await res.json()) }
+  const fetchClients = async () => { const res = await fetch(`${API}/clients`, { headers, credentials: 'include' }); setClients(await res.json()) }
   useEffect(() => { fetchClients() }, [])
 
   const formatPhone = (digits) => {
@@ -508,7 +508,7 @@ function ClientsTab() {
   const [toast, showToast] = useToast()
   const handleCreate = async () => {
     if (!name || !phoneValid) return
-    const res = await fetch(`${API}/clients`, { method: 'POST', headers, body: JSON.stringify({ name, phone }) })
+    const res = await fetch(`${API}/clients`, { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ name, phone }) })
     if (res.ok) { showToast(`Клиент ${name} создан!`); setName(''); setPhone('+7'); fetchClients() }
     else showToast('Ошибка создания клиента', 'error')
   }
@@ -526,10 +526,10 @@ function ClientsTab() {
     if (depositMethod === 'mixed') {
       if (!cashAmount && !cardAmount) return
       const total = parseFloat(cashAmount || 0) + parseFloat(cardAmount || 0)
-      await fetch(`${API}/clients/${clientId}/deposit`, { method: 'POST', headers, body: JSON.stringify({ amount: total, payment_method: 'mixed', cash_amount: parseFloat(cashAmount || 0), card_amount: parseFloat(cardAmount || 0) }) })
+      await fetch(`${API}/clients/${clientId}/deposit`, { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ amount: total, payment_method: 'mixed', cash_amount: parseFloat(cashAmount || 0), card_amount: parseFloat(cardAmount || 0) }) })
     } else {
       if (!depositAmount) return
-      await fetch(`${API}/clients/${clientId}/deposit`, { method: 'POST', headers, body: JSON.stringify({ amount: parseFloat(depositAmount), payment_method: depositMethod }) })
+      await fetch(`${API}/clients/${clientId}/deposit`, { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ amount: parseFloat(depositAmount), payment_method: depositMethod }) })
     }
     setDepositAmount(''); setCashAmount(''); setCardAmount(''); setSelectedClient(null); fetchClients()
     showToast('Баланс пополнен!')
@@ -620,7 +620,7 @@ function ClientsTab() {
 function CashTab({ clients }) {
   const [report, setReport] = useState(null)
   const headers = { 'Authorization': `Bearer ${getToken()}` }
-  const fetchReport = async () => { const res = await fetch(`${API}/reports/today`, { headers }); setReport(await res.json()) }
+  const fetchReport = async () => { const res = await fetch(`${API}/reports/today`, { headers, credentials: 'include' }); setReport(await res.json()) }
   useEffect(() => { fetchReport(); const i = setInterval(fetchReport, 10000); return () => clearInterval(i) }, [])
   if (!report) return <p className="text-gray-500">Загрузка...</p>
   return (
@@ -669,16 +669,16 @@ function StaffTab() {
   const [editPassword, setEditPassword] = useState('')
   const [editUsername, setEditUsername] = useState('')
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
-  const fetchUsers = async () => { const res = await fetch(`${API}/users`, { headers }); const data = await res.json(); setUsers(Array.isArray(data) ? data : []) }
+  const fetchUsers = async () => { const res = await fetch(`${API}/users`, { headers, credentials: 'include' }); const data = await res.json(); setUsers(Array.isArray(data) ? data : []) }
   useEffect(() => { fetchUsers() }, [])
   const handleCreate = async () => {
     if (!username || !password) return
-    await fetch(`${API}/users`, { method: 'POST', headers, body: JSON.stringify({ username, password, role }) })
+    await fetch(`${API}/users`, { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ username, password, role }) })
     setUsername(''); setPassword(''); fetchUsers()
   }
   const handleDelete = async (id) => {
     if (!confirm('Удалить сотрудника?')) return
-    await fetch(`${API}/users/${id}`, { method: 'DELETE', headers })
+    await fetch(`${API}/users/${id}`, { method: 'DELETE', headers, credentials: 'include' })
     fetchUsers()
   }
   const handleSave = async (id) => {
@@ -686,7 +686,7 @@ function StaffTab() {
     if (editPassword) body.password = editPassword
     if (editUsername) body.username = editUsername
     if (!body.password && !body.username) return
-    await fetch(`${API}/users/${id}`, { method: 'PUT', headers, body: JSON.stringify(body) })
+    await fetch(`${API}/users/${id}`, { method: 'PUT', headers, credentials: 'include', body: JSON.stringify(body) })
     setEditId(null); setEditPassword(''); setEditUsername(''); fetchUsers()
   }
   const roleLabel = { owner: '👑 Владелец', manager: '🔑 Управляющий', admin: '👤 Администратор' }
@@ -744,11 +744,11 @@ function BonusTab() {
   const [bonusAmount, setBonusAmount] = useState('')
   const [maxPercent, setMaxPercent] = useState('50')
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` }
-  const fetchPromos = async () => { const res = await fetch(`${API}/bonus-promos`, { headers }); const data = await res.json(); setPromos(Array.isArray(data) ? data : []) }
+  const fetchPromos = async () => { const res = await fetch(`${API}/bonus-promos`, { headers, credentials: 'include' }); const data = await res.json(); setPromos(Array.isArray(data) ? data : []) }
   useEffect(() => { fetchPromos() }, [])
   const handleCreate = async () => {
     if (!name || !minDeposit || !bonusAmount) return
-    await fetch(`${API}/bonus-promos`, { method: 'POST', headers, body: JSON.stringify({ name, min_deposit: parseFloat(minDeposit), bonus_amount: parseFloat(bonusAmount), max_bonus_percent: parseFloat(maxPercent) }) })
+    await fetch(`${API}/bonus-promos`, { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ name, min_deposit: parseFloat(minDeposit), bonus_amount: parseFloat(bonusAmount), max_bonus_percent: parseFloat(maxPercent) }) })
     setName(''); setMinDeposit(''); setBonusAmount(''); setMaxPercent('50'); fetchPromos()
   }
   const [editId, setEditId] = useState(null)
@@ -763,12 +763,12 @@ function BonusTab() {
     setEditData({ name: p.name, min_deposit: p.min_deposit, bonus_amount: p.bonus_amount, max_bonus_percent: p.max_bonus_percent })
   }
   const handleSaveEdit = async (id) => {
-    await fetch(`${API}/bonus-promos/${id}`, { method: 'PUT', headers, body: JSON.stringify({ name: editData.name, min_deposit: parseFloat(editData.min_deposit), bonus_amount: parseFloat(editData.bonus_amount), max_bonus_percent: parseFloat(editData.max_bonus_percent) }) })
+    await fetch(`${API}/bonus-promos/${id}`, { method: 'PUT', headers, credentials: 'include', body: JSON.stringify({ name: editData.name, min_deposit: parseFloat(editData.min_deposit), bonus_amount: parseFloat(editData.bonus_amount), max_bonus_percent: parseFloat(editData.max_bonus_percent) }) })
     setEditId(null); fetchPromos()
   }
   const handleDelete = async (id) => {
     if (!confirm('Удалить акцию?')) return
-    await fetch(`${API}/bonus-promos/${id}`, { method: 'DELETE', headers })
+    await fetch(`${API}/bonus-promos/${id}`, { method: 'DELETE', headers, credentials: 'include' })
     fetchPromos()
   }
   return (
@@ -850,7 +850,7 @@ function ReportsTab() {
 
   const fetchReport = () => {
     setLoading(true)
-    fetch(`${API}/reports/full?date_from=${dateFrom}&date_to=${dateTo}`, { headers })
+    fetch(`${API}/reports/full?date_from=${dateFrom}&date_to=${dateTo}`, { headers, credentials: 'include' })
       .then(r => r.json())
       .then(data => { setReport(data); setLoading(false) })
       .catch(() => setLoading(false))
@@ -989,7 +989,7 @@ function DashboardTab({ sessions, computers, clients, headers }) {
   const [todayReport, setTodayReport] = useState(null)
 
   useEffect(() => {
-    fetch(`${API}/reports/today`, { headers })
+    fetch(`${API}/reports/today`, { headers, credentials: 'include' })
       .then(r => r.json())
       .then(data => setTodayReport(data))
   }, [])
@@ -1095,8 +1095,8 @@ export default function App() {
   const fetchData = async () => {
     try {
       const [compRes, sessRes, clientRes, tariffRes] = await Promise.all([
-        fetch(`${API}/computers`, { headers }), fetch(`${API}/sessions/active`, { headers }),
-        fetch(`${API}/clients`, { headers }), fetch(`${API}/tariffs`, { headers })
+        fetch(`${API}/computers`, { headers, credentials: 'include' }), fetch(`${API}/sessions/active`, { headers, credentials: 'include' }),
+        fetch(`${API}/clients`, { headers, credentials: 'include' }), fetch(`${API}/tariffs`, { headers, credentials: 'include' })
       ])
       if (compRes.status === 401) { handleLogout(); return }
       setComputers(await compRes.json()); setSessions(await sessRes.json())
@@ -1112,17 +1112,17 @@ export default function App() {
     return () => clearInterval(i)
   }, [user])
 
-  const handleLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null) }
+  const handleLogout = () => { fetch(API + '/auth/logout', { method: 'POST', credentials: 'include' }); localStorage.removeItem('user'); setUser(null) }
   const handleLogin = (data) => setUser({ username: data.username, role: data.role })
   const handleDeleteComputer = async (computerId) => {
     if (!confirm('Удалить ПК?')) return
-    await fetch(`${API}/computers/${computerId}`, { method: 'DELETE', headers })
+    await fetch(`${API}/computers/${computerId}`, { method: 'DELETE', headers, credentials: 'include' })
     fetchData()
   }
 
   const handleStart = (computer) => setStartModal(computer)
   const handleConfirmStart = async (clientId, tariffId, bonusAmount = 0) => {
-    const res = await fetch(`${API}/sessions/start`, { method: 'POST', headers, body: JSON.stringify({ computer_id: startModal.id, tariff_id: tariffId, client_id: clientId, bonus_amount: bonusAmount }) })
+    const res = await fetch(`${API}/sessions/start`, { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ computer_id: startModal.id, tariff_id: tariffId, client_id: clientId, bonus_amount: bonusAmount }) })
     if (!res.ok) {
       const err = await res.json()
       alert(`Ошибка: ${err.detail}`)
@@ -1132,7 +1132,7 @@ export default function App() {
   }
   const [toast, showToast] = useToast()
   const handleStop = async (sessionId) => {
-    const res = await fetch(`${API}/sessions/stop`, { method: 'POST', headers, body: JSON.stringify({ session_id: sessionId }) })
+    const res = await fetch(`${API}/sessions/stop`, { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ session_id: sessionId }) })
     const data = await res.json()
     showToast(`Сессия завершена! ${data.duration_minutes} мин · ${data.total_amount} ₸`, 'info')
     fetchData()
