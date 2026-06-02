@@ -15,10 +15,15 @@ class CreateComputer(BaseModel):
 
 
 @router.get("")
-def get_computers():
+def get_computers(name: str = None, status: str = None):
     db = SessionLocal()
     try:
-        computers = db.query(Computer).all()
+        query = db.query(Computer)
+        if name:
+            query = query.filter(Computer.name.ilike(f"%{name}%"))
+        if status:
+            query = query.filter(Computer.status == status)
+        computers = query.all()
         return [{"id": c.id, "name": c.name, "status": c.status, "last_seen": str(c.last_seen)} for c in computers]
     finally:
         db.close()
