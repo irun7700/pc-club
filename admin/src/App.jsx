@@ -68,7 +68,7 @@ function LoginPage({ onLogin }) {
       })
       if (!res.ok) { setError('Неверный логин или пароль'); return }
       const data = await res.json()
-      // token stored in httpOnly cookie
+      localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify({ username: data.username, role: data.role }))
       onLogin(data)
     } catch (e) {
@@ -1112,7 +1112,7 @@ export default function App() {
     return () => clearInterval(i)
   }, [user])
 
-  const handleLogout = () => { fetch(API + '/auth/logout', { method: 'POST', credentials: 'include' }); localStorage.removeItem('user'); setUser(null) }
+  const handleLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null) }
   const handleLogin = (data) => setUser({ username: data.username, role: data.role })
   const handleDeleteComputer = async (computerId) => {
     if (!confirm('Удалить ПК?')) return

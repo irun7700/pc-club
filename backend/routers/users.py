@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Request, Response
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import Optional
 
@@ -26,30 +26,16 @@ class UpdateUser(BaseModel):
 
 
 @router.post("/auth/login")
-def login(request: Request, data: LoginData, response: Response):
+def login(request: Request, data: LoginData):
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.username == data.username).first()
         if not user or not verify_password(data.password, user.password_hash):
             raise HTTPException(status_code=401, detail="Неверный логин или пароль")
         token = create_token({"id": user.id, "username": user.username, "role": user.role})
-        response.set_cookie(
-            key="access_token",
-            value=token,
-            httponly=True,
-            secure=True,
-            samesite="none",
-            max_age=86400,
-        )
-        return {"role": user.role, "username": user.username}
+        return {"token": token, "role": user.role, "username": user.username}
     finally:
         db.close()
-
-
-@router.post("/auth/logout")
-def logout(response: Response):
-    response.delete_cookie("access_token", samesite="none", secure=True)
-    return {"ok": True}
 
 
 @router.get("/auth/me")
