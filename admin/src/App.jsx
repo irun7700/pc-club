@@ -1143,19 +1143,19 @@ export default function App() {
   const roleLabel = { owner: '👑 Владелец', manager: '🔑 Управляющий', admin: '👤 Администратор' }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-100 p-3 md:p-6 pb-20 md:pb-6">
       {startModal && <StartModal computer={startModal} clients={clients} tariffs={tariffs} onConfirm={handleConfirmStart} onCancel={() => setStartModal(null)} />}
       <Toast message={toast?.message} type={toast?.type} />
       <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">🖥 PC Club Admin</h1>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500">{roleLabel[user.role]} {user.username}</span>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl md:text-3xl font-bold text-gray-800">🖥 PC Club</h1>
+          <div className="flex items-center gap-2">
+            <span className="hidden md:inline text-sm text-gray-500">{roleLabel[user.role]} {user.username}</span>
+            <span className="hidden md:inline text-xs text-gray-400">Обновлено: {lastUpdate}</span>
             <button onClick={handleLogout} className="px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm">Выйти</button>
-            <span className="text-xs text-gray-400">Обновлено: {lastUpdate}</span>
           </div>
         </div>
-        <div className="flex gap-2 mb-6 flex-wrap">
+        <div className="hidden md:flex gap-2 mb-6 flex-wrap">
           <button onClick={() => setTab('dashboard')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'dashboard' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>🏠 Дашборд</button>
           <button onClick={() => setTab('computers')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'computers' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>🖥 Компьютеры</button>
           <button onClick={() => setTab('clients')} className={`px-5 py-2 rounded-lg font-medium ${tab === 'clients' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>👤 Клиенты</button>
@@ -1180,6 +1180,34 @@ export default function App() {
         {tab === 'staff' && <StaffTab />}
         {tab === 'bonus' && <BonusTab />}
         {tab === 'reports' && <ReportsTab />}
+      </div>
+
+      {/* Нижняя навигация для мобильных */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t md:hidden z-40">
+        <div className="flex justify-around py-2">
+          <button onClick={() => setTab('dashboard')} className={'flex flex-col items-center px-2 py-1 text-xs ' + (tab === 'dashboard' ? 'text-blue-500' : 'text-gray-500')}>
+            <span className="text-xl">🏠</span><span>Дашборд</span>
+          </button>
+          <button onClick={() => setTab('computers')} className={'flex flex-col items-center px-2 py-1 text-xs ' + (tab === 'computers' ? 'text-blue-500' : 'text-gray-500')}>
+            <span className="text-xl">🖥</span><span>ПК</span>
+          </button>
+          <button onClick={() => setTab('clients')} className={'flex flex-col items-center px-2 py-1 text-xs ' + (tab === 'clients' ? 'text-blue-500' : 'text-gray-500')}>
+            <span className="text-xl">👤</span><span>Клиенты</span>
+          </button>
+          <button onClick={() => setTab('cash')} className={'flex flex-col items-center px-2 py-1 text-xs ' + (tab === 'cash' ? 'text-blue-500' : 'text-gray-500')}>
+            <span className="text-xl">💰</span><span>Касса</span>
+          </button>
+          {(user.role === 'owner' || user.role === 'manager') && (
+            <button onClick={() => setTab('reports')} className={'flex flex-col items-center px-2 py-1 text-xs ' + (tab === 'reports' ? 'text-blue-500' : 'text-gray-500')}>
+              <span className="text-xl">📊</span><span>Отчёты</span>
+            </button>
+          )}
+          {(user.role === 'owner' || user.role === 'manager') && (
+            <button onClick={() => setTab('tariffs')} className={'flex flex-col items-center px-2 py-1 text-xs ' + (tab === 'tariffs' ? 'text-blue-500' : 'text-gray-500')}>
+              <span className="text-xl">⚙️</span><span>Тарифы</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
