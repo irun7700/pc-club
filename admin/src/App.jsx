@@ -258,61 +258,61 @@ function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clie
   const alertColor = alert5 ? 'border-red-500 bg-red-50' : alert15 ? 'border-yellow-400 bg-yellow-50' : isOnline ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'
 
   return (
-    <div className={`relative rounded-2xl shadow-lg overflow-hidden transition-all duration-300 ${hasSession ? 'bg-gradient-to-br from-blue-600 to-blue-800' : isOnline ? 'bg-gradient-to-br from-green-500 to-green-700' : 'bg-gradient-to-br from-gray-400 to-gray-600'} ${alert5 ? 'ring-4 ring-red-500 animate-pulse' : alert15 ? 'ring-4 ring-yellow-400' : ''}`}>
-      <div className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <div className="text-white text-xs font-medium uppercase tracking-wider mb-1 opacity-70">Компьютер</div>
-            <div className="text-white text-4xl font-black">{computer.name}</div>
-            <svg viewBox="0 0 120 90" className="w-24 mt-2" xmlns="http://www.w3.org/2000/svg">
-              <rect x="5" y="2" width="110" height="70" rx="6" fill="rgba(0,0,0,0.4)" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/>
-              <rect x="10" y="7" width="100" height="60" rx="4" fill={hasSession ? "#1d4ed8" : isOnline ? "#15803d" : "#374151"}/>
-              {hasSession && <text x="60" y="42" textAnchor="middle" fill="white" fontSize="18" fontWeight="bold">▶</text>}
-              {!hasSession && isOnline && <text x="60" y="42" textAnchor="middle" fill="#4ade80" fontSize="10" fontWeight="bold">ONLINE</text>}
-              {!isOnline && <text x="60" y="42" textAnchor="middle" fill="#9ca3af" fontSize="10">OFFLINE</text>}
-              <rect x="52" y="72" width="16" height="10" rx="1" fill="rgba(0,0,0,0.4)"/>
-              <rect x="35" y="82" width="50" height="5" rx="3" fill="rgba(0,0,0,0.4)"/>
-            </svg>
+    <div className="bg-gray-100 rounded-2xl p-3 shadow-md">
+      {/* Монитор */}
+      <div className={`relative rounded-xl overflow-hidden ${alert5 ? 'ring-4 ring-red-500 animate-pulse' : alert15 ? 'ring-4 ring-yellow-400' : ''}`}>
+        {/* Экран */}
+        <div className={`relative w-full aspect-video flex flex-col items-center justify-center rounded-t-xl ${hasSession ? 'bg-gradient-to-br from-blue-600 to-blue-900' : isOnline ? 'bg-gradient-to-br from-green-500 to-green-800' : 'bg-gradient-to-br from-gray-600 to-gray-900'}`}>
+          {/* Блик на экране */}
+          <div className="absolute top-0 left-0 right-0 h-1/3 bg-white opacity-5 rounded-t-xl"/>
+          {/* Номер ПК */}
+          <div className="text-white text-5xl font-black drop-shadow-lg">{computer.name}</div>
+          <div className={`mt-1 text-xs font-bold px-3 py-1 rounded-full ${hasSession ? 'bg-blue-400 text-white' : isOnline ? 'bg-green-400 text-white' : 'bg-gray-500 text-gray-200'}`}>
+            {hasSession ? '● СЕССИЯ' : isOnline ? '● ONLINE' : '● OFFLINE'}
           </div>
-          <div className="text-right">
-            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${hasSession ? 'bg-blue-500 text-white' : isOnline ? 'bg-green-400 text-white' : 'bg-gray-500 text-white'}`}>
-              {hasSession ? '● Сессия' : isOnline ? '● Online' : '● Offline'}
-            </span>
-            {userRole === 'owner' && !activeSession && (
-              <button onClick={() => onDelete(computer.id)} className="block mt-2 text-white opacity-50 hover:opacity-100 text-xs ml-auto">✕ удалить</button>
-            )}
-          </div>
+          {hasSession && minutesLeft !== null && (
+            <div className={`mt-1 text-xs font-medium ${alert5 ? 'text-red-300' : 'text-blue-200'}`}>осталось {Math.round(minutesLeft)} мин</div>
+          )}
+          {/* Удалить */}
+          {userRole === 'owner' && !activeSession && (
+            <button onClick={() => onDelete(computer.id)} className="absolute top-2 right-2 text-white opacity-30 hover:opacity-80 text-xs">✕</button>
+          )}
         </div>
-        {hasSession && (
-          <div className="mt-3 bg-white bg-opacity-20 rounded-xl p-3 text-white text-sm space-y-1">
-            {alert5 && <div className="font-bold text-red-200">🚨 Осталось менее 5 минут!</div>}
-            {alert15 && !alert5 && <div className="font-medium text-yellow-200">⚠️ Осталось менее 15 минут</div>}
-            <div className="flex justify-between">
-              <span>⏱ {activeSession.duration_minutes} мин</span>
-              {minutesLeft !== null && <span>осталось {Math.round(minutesLeft)} мин</span>}
-            </div>
-            {tariff && <div className="opacity-80">📋 {tariff.name}</div>}
-            {client ? <div>👤 {client.name} · {client.balance} ₸</div> : <div>👤 Без клиента</div>}
-          </div>
-        )}
+        {/* Подставка монитора */}
+        <div className="bg-gray-300 h-2 rounded-b-sm mx-8"/>
+        <div className="bg-gray-400 h-3 rounded-b-xl mx-12"/>
       </div>
-      <div className="px-5 pb-5 space-y-2">
+
+      {/* Инфо о сессии */}
+      {hasSession && (
+        <div className="mt-2 bg-blue-50 rounded-xl p-2 text-xs text-blue-800 space-y-0.5">
+          {alert5 && <div className="font-bold text-red-600">🚨 Менее 5 минут!</div>}
+          {alert15 && !alert5 && <div className="font-medium text-yellow-600">⚠️ Менее 15 минут</div>}
+          <div>⏱ {activeSession.duration_minutes} мин {tariff ? '· ' + tariff.name : ''}</div>
+          {client ? <div>👤 {client.name} · {client.balance} ₸</div> : <div>👤 Без клиента</div>}
+        </div>
+      )}
+
+      {/* Кнопки */}
+      <div className="mt-2 space-y-1">
         {!hasSession ? (
-          <button onClick={() => onStart(computer)} disabled={!isOnline} className="w-full py-3 rounded-xl bg-white text-blue-700 font-bold text-sm hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">▶ Старт</button>
+          <button onClick={() => onStart(computer)} disabled={!isOnline} className="w-full py-2 rounded-xl bg-blue-500 text-white font-bold text-sm hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all">▶ Старт</button>
         ) : (
-          <button onClick={() => onStop(activeSession.session_id)} className="w-full py-3 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-all">■ Стоп</button>
+          <button onClick={() => onStop(activeSession.session_id)} className="w-full py-2 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-all">■ Стоп</button>
         )}
         {(userRole === 'owner' || userRole === 'manager') && isOnline && (
-          <div className="flex gap-2">
-            <button onClick={() => sendCommand('restart')} disabled={cmdLoading} className="flex-1 py-2 rounded-xl bg-white bg-opacity-20 text-white text-xs font-medium hover:bg-opacity-30 disabled:opacity-40">🔄</button>
-            <button onClick={() => sendCommand('shutdown')} disabled={cmdLoading} className="flex-1 py-2 rounded-xl bg-white bg-opacity-20 text-white text-xs font-medium hover:bg-opacity-30 disabled:opacity-40">⏻</button>
-            <button onClick={() => sendCommand('wakeup')} disabled={cmdLoading} className="flex-1 py-2 rounded-xl bg-white bg-opacity-20 text-white text-xs font-medium hover:bg-opacity-30 disabled:opacity-40">⚡</button>
+          <div className="flex gap-1">
+            <button onClick={() => sendCommand('restart')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-xl bg-yellow-100 text-yellow-700 text-xs font-medium hover:bg-yellow-200 disabled:opacity-40">🔄</button>
+            <button onClick={() => sendCommand('shutdown')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-xl bg-gray-200 text-gray-700 text-xs font-medium hover:bg-gray-300 disabled:opacity-40">⏻</button>
+            <button onClick={() => sendCommand('wakeup')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-xl bg-green-100 text-green-700 text-xs font-medium hover:bg-green-200 disabled:opacity-40">⚡</button>
           </div>
         )}
       </div>
     </div>
   )
 }
+REMOVED_CLOSING
+
 function TariffFormFields({ vals, onChange }) {
   return (<>
     {vals.type === 'hourly' && <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Цена за час (₸)" type="number" value={vals.pricePerHour} onChange={e => onChange('pricePerHour', e.target.value)} />}
