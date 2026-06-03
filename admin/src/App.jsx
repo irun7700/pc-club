@@ -258,42 +258,52 @@ function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clie
   const alertColor = alert5 ? 'border-red-500 bg-red-50' : alert15 ? 'border-yellow-400 bg-yellow-50' : isOnline ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'
 
   return (
-    <div className={`rounded-xl p-5 shadow-md border-2 ${alertColor}`}>
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="text-xl font-bold">{computer.name}</h2>
-        <span className={`text-sm px-2 py-1 rounded-full font-medium ${isOnline ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
-          {isOnline ? '🟢 Online' : '⚫ Offline'}
-        </span>
-      </div>
-      {alert5 && <div className="mb-2 px-3 py-2 bg-red-100 border border-red-400 rounded-lg text-red-700 text-sm font-bold animate-pulse">🚨 Осталось менее 5 минут!</div>}
-      {alert15 && !alert5 && <div className="mb-2 px-3 py-2 bg-yellow-100 border border-yellow-400 rounded-lg text-yellow-700 text-sm font-medium">⚠️ Осталось менее 15 минут</div>}
-      {hasSession && (
-        <div className="text-sm text-blue-700 mb-3 space-y-1">
-          <div>⏱ {activeSession.duration_minutes} мин · {tariff ? tariff.name : ''}{minutesLeft !== null ? ` · осталось ${Math.round(minutesLeft)} мин` : ''}</div>
-          {client ? <div>👤 {client.name} — {client.balance} ₸</div> : <div>👤 Без клиента</div>}
+    <div className={`relative rounded-2xl shadow-lg overflow-hidden transition-all duration-300 ${hasSession ? 'bg-gradient-to-br from-blue-600 to-blue-800' : isOnline ? 'bg-gradient-to-br from-green-500 to-green-700' : 'bg-gradient-to-br from-gray-400 to-gray-600'} ${alert5 ? 'ring-4 ring-red-500 animate-pulse' : alert15 ? 'ring-4 ring-yellow-400' : ''}`}>
+      <div className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="text-white text-xs font-medium uppercase tracking-wider mb-1 opacity-70">Компьютер</div>
+            <div className="text-white text-4xl font-black">{computer.name}</div>
+          </div>
+          <div className="text-right">
+            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${hasSession ? 'bg-blue-500 text-white' : isOnline ? 'bg-green-400 text-white' : 'bg-gray-500 text-white'}`}>
+              {hasSession ? '● Сессия' : isOnline ? '● Online' : '● Offline'}
+            </span>
+            {userRole === 'owner' && !activeSession && (
+              <button onClick={() => onDelete(computer.id)} className="block mt-2 text-white opacity-50 hover:opacity-100 text-xs ml-auto">✕ удалить</button>
+            )}
+          </div>
         </div>
-      )}
-      {userRole === 'owner' && !activeSession && (
-        <button onClick={() => onDelete(computer.id)} className="text-xs text-red-400 hover:text-red-600 mt-1">Удалить ПК</button>
-      )}
-      <div className="flex gap-2 mt-2">
-        {!hasSession ? (
-          <button onClick={() => onStart(computer)} disabled={!isOnline} className="flex-1 py-2 rounded-lg bg-blue-500 text-white font-medium disabled:opacity-40 hover:bg-blue-600">Старт</button>
-        ) : (
-          <button onClick={() => onStop(activeSession.session_id)} className="flex-1 py-2 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600">Стоп</button>
+        {hasSession && (
+          <div className="mt-3 bg-white bg-opacity-20 rounded-xl p-3 text-white text-sm space-y-1">
+            {alert5 && <div className="font-bold text-red-200">🚨 Осталось менее 5 минут!</div>}
+            {alert15 && !alert5 && <div className="font-medium text-yellow-200">⚠️ Осталось менее 15 минут</div>}
+            <div className="flex justify-between">
+              <span>⏱ {activeSession.duration_minutes} мин</span>
+              {minutesLeft !== null && <span>осталось {Math.round(minutesLeft)} мин</span>}
+            </div>
+            {tariff && <div className="opacity-80">📋 {tariff.name}</div>}
+            {client ? <div>👤 {client.name} · {client.balance} ₸</div> : <div>👤 Без клиента</div>}
+          </div>
         )}
       </div>
-      {(userRole === 'owner' || userRole === 'manager') && isOnline && (
-        <div className="flex gap-2 mt-2">
-          <button onClick={() => sendCommand('restart')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-lg bg-yellow-500 text-white text-sm font-medium hover:bg-yellow-600 disabled:opacity-40">🔄 Перезагрузить</button>
-          <button onClick={() => sendCommand('shutdown')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-lg bg-gray-600 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-40">⏻ Выключить</button>
-          <button onClick={() => sendCommand('wakeup')} disabled={cmdLoading} className="flex-1 py-1.5 rounded-lg bg-green-500 text-white text-sm font-medium hover:bg-green-600 disabled:opacity-40">⚡ Включить</button>
-        </div>
-      )}
+      <div className="px-5 pb-5 space-y-2">
+        {!hasSession ? (
+          <button onClick={() => onStart(computer)} disabled={!isOnline} className="w-full py-3 rounded-xl bg-white text-blue-700 font-bold text-sm hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">▶ Старт</button>
+        ) : (
+          <button onClick={() => onStop(activeSession.session_id)} className="w-full py-3 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-all">■ Стоп</button>
+        )}
+        {(userRole === 'owner' || userRole === 'manager') && isOnline && (
+          <div className="flex gap-2">
+            <button onClick={() => sendCommand('restart')} disabled={cmdLoading} className="flex-1 py-2 rounded-xl bg-white bg-opacity-20 text-white text-xs font-medium hover:bg-opacity-30 disabled:opacity-40">🔄</button>
+            <button onClick={() => sendCommand('shutdown')} disabled={cmdLoading} className="flex-1 py-2 rounded-xl bg-white bg-opacity-20 text-white text-xs font-medium hover:bg-opacity-30 disabled:opacity-40">⏻</button>
+            <button onClick={() => sendCommand('wakeup')} disabled={cmdLoading} className="flex-1 py-2 rounded-xl bg-white bg-opacity-20 text-white text-xs font-medium hover:bg-opacity-30 disabled:opacity-40">⚡</button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
-
 function TariffFormFields({ vals, onChange }) {
   return (<>
     {vals.type === 'hourly' && <input className="flex-1 border rounded-lg px-3 py-2" placeholder="Цена за час (₸)" type="number" value={vals.pricePerHour} onChange={e => onChange('pricePerHour', e.target.value)} />}
