@@ -311,7 +311,7 @@ function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clie
     </div>
   )
 }
-REMOVED_CLOSING
+
 
 function TariffFormFields({ vals, onChange }) {
   return (<>
