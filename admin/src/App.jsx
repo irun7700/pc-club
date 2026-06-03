@@ -264,6 +264,15 @@ function ComputerCard({ computer, onStart, onStop, onDelete, activeSession, clie
           <div>
             <div className="text-white text-xs font-medium uppercase tracking-wider mb-1 opacity-70">Компьютер</div>
             <div className="text-white text-4xl font-black">{computer.name}</div>
+            <svg viewBox="0 0 120 90" className="w-24 mt-2" xmlns="http://www.w3.org/2000/svg">
+              <rect x="5" y="2" width="110" height="70" rx="6" fill="rgba(0,0,0,0.4)" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/>
+              <rect x="10" y="7" width="100" height="60" rx="4" fill={hasSession ? "#1d4ed8" : isOnline ? "#15803d" : "#374151"}/>
+              {hasSession && <text x="60" y="42" textAnchor="middle" fill="white" fontSize="18" fontWeight="bold">▶</text>}
+              {!hasSession && isOnline && <text x="60" y="42" textAnchor="middle" fill="#4ade80" fontSize="10" fontWeight="bold">ONLINE</text>}
+              {!isOnline && <text x="60" y="42" textAnchor="middle" fill="#9ca3af" fontSize="10">OFFLINE</text>}
+              <rect x="52" y="72" width="16" height="10" rx="1" fill="rgba(0,0,0,0.4)"/>
+              <rect x="35" y="82" width="50" height="5" rx="3" fill="rgba(0,0,0,0.4)"/>
+            </svg>
           </div>
           <div className="text-right">
             <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${hasSession ? 'bg-blue-500 text-white' : isOnline ? 'bg-green-400 text-white' : 'bg-gray-500 text-white'}`}>
