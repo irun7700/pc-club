@@ -65,6 +65,7 @@ class Session(Base):
     started_at = Column(DateTime, default=datetime.datetime.utcnow)
     ended_at = Column(DateTime, nullable=True)
     total_amount = Column(Float, nullable=True)
+    purchased_minutes = Column(Integer, nullable=True)
 
 class Transaction(Base):
     __tablename__ = "transactions"

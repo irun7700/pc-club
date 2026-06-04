@@ -112,6 +112,7 @@ function LoginPage({ onLogin }) {
 function StartModal({ computer, clients, tariffs, onConfirm, onCancel }) {
   const [clientId, setClientId] = useState('')
   const [tariffId, setTariffId] = useState(tariffs[0]?.id || '')
+  const [minutes, setMinutes] = useState(60)
   const [useBonuses, setUseBonuses] = useState(false)
   const [bonusAmount, setBonusAmount] = useState(0)
   const [promos, setPromos] = useState([])
@@ -126,7 +127,8 @@ function StartModal({ computer, clients, tariffs, onConfirm, onCancel }) {
 
   const selectedClient = clientId ? clients.find(c => c.id === parseInt(clientId)) : null
   const selectedTariff = tariffId ? tariffs.find(t => t.id === parseInt(tariffId)) : null
-  const tariffPrice = selectedTariff ? (selectedTariff.total_price || selectedTariff.price_per_hour || 0) : 0
+  const isHourly = selectedTariff && !selectedTariff.total_price && !selectedTariff.duration_minutes
+  const tariffPrice = selectedTariff ? (selectedTariff.total_price || (isHourly ? Math.round(selectedTariff.price_per_hour * minutes / 60) : selectedTariff.price_per_hour) || 0) : 0
 
   // Максимальный процент оплаты бонусами из активных акций
   const activePromos = promos.filter(p => p.is_active)
@@ -138,7 +140,7 @@ function StartModal({ computer, clients, tariffs, onConfirm, onCancel }) {
     const clientIdNum = clientId ? parseInt(clientId) : null
     const tariffIdNum = parseInt(tariffId)
     const bonusAmountNum = useBonuses ? parseFloat(bonusAmount) : 0
-    onConfirm(clientIdNum, tariffIdNum, bonusAmountNum)
+    onConfirm(clientIdNum, tariffIdNum, bonusAmountNum, isHourly ? parseInt(minutes) : null)
   }
 
   return (
@@ -151,6 +153,18 @@ function StartModal({ computer, clients, tariffs, onConfirm, onCancel }) {
             {tariffs.map(t => (<option key={t.id} value={t.id}>{t.name} — {t.price_per_hour || t.total_price} ₸</option>))}
           </select>
         </div>
+        {isHourly && (
+          <div className="mb-4">
+            <label className="block text-sm text-gray-600 mb-2">Количество минут</label>
+            <div className="flex gap-2 flex-wrap mb-2">
+              {[30,60,90,120,180,240,300,360,480,600].map(m => (
+                <button key={m} onClick={() => setMinutes(m)} className={`px-3 py-1 rounded-lg text-sm font-medium ${minutes === m ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{m} мин</button>
+              ))}
+            </div>
+            <input type="number" className="w-full border rounded-lg px-3 py-2" value={minutes} min="5" max="600" onChange={e => setMinutes(parseInt(e.target.value) || 60)} />
+            {selectedTariff && <div className="text-sm text-green-600 mt-1 font-medium">Итого: {Math.round(selectedTariff.price_per_hour * minutes / 60)} ₸</div>}
+          </div>
+        )}
         <div className="mb-4">
           <label className="block text-sm text-gray-600 mb-2">Клиент (необязательно)</label>
           <select className="w-full border rounded-lg px-3 py-2" value={clientId} onChange={e => { setClientId(e.target.value); setUseBonuses(false); setBonusAmount(0) }}>
@@ -1140,8 +1154,10 @@ export default function App() {
   }
 
   const handleStart = (computer) => setStartModal(computer)
-  const handleConfirmStart = async (clientId, tariffId, bonusAmount = 0) => {
-    const res = await fetch(`${API}/sessions/start`, { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ computer_id: startModal.id, tariff_id: tariffId, client_id: clientId, bonus_amount: bonusAmount }) })
+  const handleConfirmStart = async (clientId, tariffId, bonusAmount = 0, purchasedMinutes = null) => {
+    const body = { computer_id: startModal.id, tariff_id: tariffId, client_id: clientId, bonus_amount: bonusAmount }
+    if (purchasedMinutes) body.purchased_minutes = purchasedMinutes
+    const res = await fetch(`${API}/sessions/start`, { method: 'POST', headers, credentials: 'include', body: JSON.stringify(body) })
     if (!res.ok) {
       const err = await res.json()
       alert(`Ошибка: ${err.detail}`)

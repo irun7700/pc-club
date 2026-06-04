@@ -15,6 +15,7 @@ class StartSession(BaseModel):
     tariff_id: int
     client_id: Optional[int] = None
     bonus_amount: float = 0
+    purchased_minutes: Optional[int] = None
 
 
 class StopSession(BaseModel):
@@ -63,6 +64,23 @@ def start_session(data: StartSession):
                         status_code=400,
                         detail=f"Недостаточно средств. Баланс: {client.balance} ₸, нужно: {remaining} ₸",
                     )
+                # Списываем сразу при старте
+                prepaid = 0
+                if tariff.total_price:
+                    prepaid = remaining  # пакетный — фиксированная цена
+                elif tariff.duration_minutes and tariff.price_per_hour:
+                    prepaid = round(tariff.price_per_hour * tariff.duration_minutes / 60, 2) - data.bonus_amount
+                    prepaid = max(prepaid, 0)
+                elif data.purchased_minutes and tariff.price_per_hour:
+                    prepaid = round(tariff.price_per_hour * data.purchased_minutes / 60, 2) - data.bonus_amount
+                    prepaid = max(prepaid, 0)
+                if prepaid > 0:
+                    client.balance -= prepaid
+                    db.add(Transaction(
+                        client_id=data.client_id,
+                        amount=-prepaid,
+                        type="session"
+                    ))
 
         if tariff.type == "timed" and tariff.start_time and tariff.end_time:
             now_time = datetime.datetime.utcnow().strftime("%H:%M")
@@ -77,6 +95,7 @@ def start_session(data: StartSession):
             tariff_id=data.tariff_id,
             client_id=data.client_id,
             started_at=datetime.datetime.utcnow(),
+            purchased_minutes=data.purchased_minutes,
         )
         db.add(session)
         db.commit()
@@ -101,15 +120,23 @@ def stop_session(data: StopSession):
         tariff = db.query(Tariff).filter(Tariff.id == session.tariff_id).first()
         now = datetime.datetime.utcnow()
         duration = (now - session.started_at).seconds / 3600
-        total = round(duration * tariff.price_per_hour, 2)
-        session.ended_at = now
-        session.total_amount = total
 
-        if session.client_id:
-            client = db.query(Client).filter(Client.id == session.client_id).first()
-            if client:
-                client.balance -= total
-                db.add(Transaction(client_id=session.client_id, amount=-total, type="session"))
+        # Уже списан при старте (пакетный или почасовой с purchased_minutes)
+        prepaid_at_start = tariff.total_price or tariff.duration_minutes or session.purchased_minutes
+        if prepaid_at_start:
+            total = tariff.total_price or round((tariff.price_per_hour or 0) * (session.purchased_minutes or tariff.duration_minutes or 0) / 60, 2)
+            session.ended_at = now
+            session.total_amount = total
+        else:
+            # Чистый почасовой — списываем по факту
+            total = round(duration * (tariff.price_per_hour or 0), 2)
+            session.ended_at = now
+            session.total_amount = total
+            if session.client_id:
+                client = db.query(Client).filter(Client.id == session.client_id).with_for_update().first()
+                if client:
+                    client.balance -= total
+                    db.add(Transaction(client_id=session.client_id, amount=-total, type="session"))
 
         db.commit()
         logging.info(f"Сессия {session.id} завершена, сумма: {total}")
